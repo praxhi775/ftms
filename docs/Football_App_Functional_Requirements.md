@@ -1,6 +1,6 @@
 # Football Team Management & Social Application
 
-Purpose: Build an application where football groups can manage players, communicate through group and direct messaging, and maintain player statistics. Automatic team generation will be added in a later phase.
+Purpose: Build an application where football groups can manage players, communicate through group and direct messaging, organize matches, and maintain player statistics. Automatic team generation will be added in a later phase.
 
 1. Initial Scope  
     User registration and login.  
@@ -8,7 +8,8 @@ Purpose: Build an application where football groups can manage players, communic
     Assign roles such as Manager and Player.  
     Manager controls player's statistics, players cannot edit their own statistics.  
     Group chat for all members of a group.  
-    Direct messaging between users.  
+    Direct messaging between users.
+    Create and manage football matches. 
     Basic user profile and group/member information.  
     Team generation/balancing will be implemented later.
 
@@ -22,10 +23,11 @@ Purpose: Build an application where football groups can manage players, communic
 | 3 | Home / Dashboard | Entry point after login | My groups, recent messages, pending invitations |
 | 4 | Group List / Create or Join Group | Manage group membership | Create group, join group using code/link, view groups, leave group |
 | 5 | Group Details / Members | Manage and view a football group | Group info, member list, roles, manager controls, invite/join code, member profiles |
-| 6 | Player Statistics | View football performance data | Skill/stat categories, historical stats, manager-only edit/update, player read-only view |
-| 7 | Group Chat | Communication within a group | Messages, timestamps, member names, send messages, basic message history |
-| 8 | Direct Messages | Private user-to-user communication | Conversation list, search users, one-to-one chat, message history |
-| 9 | Profile / Settings | Manage personal account | View/edit allowed profile data, password change, notification preferences, logout |
+| 6 | Matches | Create and manage football matches. | Create match, date/time,location, participating players, availability |
+| 7 | Player Statistics | View football performance data | Skill/stat categories, historical stats, manager-only edit/update, player read-only view |
+| 8 | Group Chat | Communication within a group | Messages, timestamps, member names, send messages, basic message history |
+| 9 | Direct Messages | Private user-to-user communication | Conversation list, search users, one-to-one chat, message history |
+| 10 | Profile / Settings | Manage personal account | View/edit allowed profile data, password change, notification preferences, logout |
 
 3. Page-by-Page Feature Details
 
@@ -64,7 +66,33 @@ Page 5 — Group Details / Members
  Open a member's profile/statistics.  
  This page is the main navigation point for group-specific features.
 
-Page 6 — Player Statistics  
+Page 6 — Matches
+This page handles the actual football games organized by the group.
+Create Match
+Manager can create a match with:
+Match date.
+Start time.
+Location/venue.
+Optional description.
+Number of expected players.
+Player Availability
+Group members can:
+Mark themselves as Available.
+Mark themselves as Unavailable.
+Optionally mark themselves as Maybe.
+Match Details
+Display:
+Match information.
+List of participating players.
+Available/unavailable players.
+Match status.
+Number of confirmed players.
+Future Integration
+When automatic team generation is implemented, this page can provide:
+Match → Participating Players → Generate Balanced Teams
+The team-generation algorithm will use the manager-controlled player statistics.
+
+Page 7 — Player Statistics  
  Display football skills/statistics for each player.  
  Example skills: passing, shooting, dribbling, defending, stamina, etc.  
  Manager is allowed to create/update player stats.  
@@ -72,21 +100,21 @@ Page 6 — Player Statistics
  Maintain updated values and optionally a history of previous ratings.  
  Future team-generation logic will use these stats.
 
-Page 7 — Group Chat  
+Page 8 — Group Chat  
  One shared conversation for the group.  
  Send and receive messages.  
  Show sender, timestamp, and message.  
  Load previous messages.  
  Restrict access to current group members.
 
-Page 8 — Direct Messages  
+Page 9 — Direct Messages  
  Search/select another user.  
  Create or open a one-to-one conversation.  
  Send and receive private messages.  
  Conversation history.  
  Show unread message count.
 
-Page 9 — Profile / Settings  
+Page 10 — Profile / Settings  
  View profile.  
  Edit basic user information.  
  Change password.  
