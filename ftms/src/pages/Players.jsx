@@ -1,42 +1,76 @@
-import { useState, useMemo } from 'react';
-import DossierHeader from '../components/dossier/DossierHeader';
-import AttributeRadarChart from '../components/dossier/AttributeRadarChart';
-import PlayerTraitsPanel from '../components/dossier/PlayerTraitsPanel';
-import SubMetricBreakdown from '../components/dossier/SubMetricBreakdown';
-import EditRatingsModal from '../components/dossier/EditRatingsModal';
-
-const INITIAL_RATINGS = {
-  pac: 82,
-  sho: 85,
-  pas: 76,
-  dri: 86,
-  def: 43,
-  phy: 76,
-};
+import { useState, useEffect, useTransition } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Users, 
+  UserPlus, 
+  Search, 
+  Filter, 
+  ArrowUpDown, 
+  ChevronRight, 
+  AlertCircle 
+} from 'lucide-react';
+import { playerService, calcOverall } from '../services/playerService';
+import PlayerFormModal from '../components/players/PlayerFormModal';
 
 export default function Players() {
-  const [ratings, setRatings] = useState(INITIAL_RATINGS);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
+  const [, startTransition] = useTransition();
+
+  const [players, setPlayers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [positionFilter, setPositionFilter] = useState('');
+  const [sortBy, setSortBy] = useState('name');
+  
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Dynamically calculate Winger OVR (Overall Rating) based on updated attributes
-  const ovrRating = useMemo(() => {
-    const calculated =
-      0.35 * ratings.dri +
-      0.3 * ratings.pac +
-      0.2 * ratings.sho +
-      0.1 * ratings.pas +
-      0.05 * ratings.phy;
-    return Math.round(calculated);
-  }, [ratings]);
+  const loadPlayers = async () => {
+    try {
+      setLoading(true);
+      const data = await playerService.search(searchQuery, positionFilter, sortBy);
+      startTransition(() => {
+        setPlayers(data);
+      });
+    } catch (err) {
+      console.error('Failed to load players:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleExportSheet = () => {
-    setToastMessage('Player Dossier sheet prepared for export.');
+  useEffect(() => {
+    loadPlayers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, positionFilter, sortBy]);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const getStatusBadge = (status) => {
+    if (status === 'injured') {
+      return <span className="badge badge-peach" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>Injured</span>;
+    }
+    if (status === 'inactive') {
+      return <span className="badge badge-peach" style={{ backgroundColor: '#F3F4F6', color: '#4B5563' }}>Inactive</span>;
+    }
+    return <span className="badge badge-green">Active</span>;
+  };
+
+  const getPositionBadgeClass = (pos) => {
+    switch (pos) {
+      case 'GK': return 'badge-gk';
+      case 'DEF': return 'badge-def';
+      case 'MID': return 'badge-mid';
+      case 'FWD': return 'badge-att';
+      default: return 'badge-mid';
+    }
+  };
+
   return (
-    <div className="player-dossier-page">
+    <div className="players-page-container" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Toast Notification */}
       {toastMessage && (
         <div className="dossier-toast" role="status" aria-live="polite">
@@ -44,96 +78,233 @@ export default function Players() {
         </div>
       )}
 
-      {/* Breadcrumbs & Action Bar */}
-      <DossierHeader
-        onEditRatings={() => setIsModalOpen(true)}
-        onExportSheet={handleExportSheet}
-      />
-
-      {/* Main Player Profile Card */}
-      <section className="player-profile-main-card" aria-label="Player Profile Dossier">
-        {/* Profile Header: Number badge, Name, OVR, Metadata */}
-        <div className="profile-identity-header">
-          <div className="squad-number-badge-wrap">
-            <div className="squad-number-circle" aria-label="Squad Number 11">
-              11
-            </div>
-            <div className="position-subbadge" aria-label="Position Left Wing">
-              LW
-            </div>
+      {/* Hero / Header Card */}
+      <section className="welcome-hero-card" style={{ padding: '24px 28px' }}>
+        <div className="hero-header-row" style={{ marginBottom: '16px' }}>
+          <div className="hero-title-group">
+            <h1 className="hero-title" style={{ fontSize: '28px' }}>Squad Roster</h1>
+            <p className="hero-subtitle">
+              Manage player dossiers, position depth, tactical attributes, and squad readiness.
+            </p>
           </div>
-
-          <div className="profile-name-group">
-            <div className="name-and-ovr-row">
-              <h1 className="player-full-name">
-                Marcus "Speedy" Vance
-              </h1>
-              <span className="ovr-pill-badge" aria-label={`Overall Rating ${ovrRating}`}>
-                OVR {ovrRating}
-              </span>
-            </div>
-
-            <div className="player-meta-inline">
-              <span className="meta-position-tag">
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="meta-icon"
-                  aria-hidden="true"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="m4.93 4.93 4.24 4.24" />
-                  <path d="m14.83 9.17 4.24-4.24" />
-                  <path d="m14.83 14.83 4.24 4.24" />
-                  <path d="m9.17 14.83-4.24 4.24" />
-                </svg>
-                Left Wing (LW / LM)
-              </span>
-              <span className="meta-bullet">•</span>
-              <span>Age 27</span>
-              <span className="meta-bullet">•</span>
-              <span>Squad #11</span>
-              <span className="meta-bullet">•</span>
-              <span>178 cm / 72 kg</span>
-            </div>
-          </div>
+          
+          <button
+            type="button"
+            className="btn-import-backup"
+            onClick={() => setIsAddModalOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+          >
+            <UserPlus size={16} />
+            <span>Add Player</span>
+          </button>
         </div>
 
-        {/* Profile Body: 7:5 ratio (Radar Chart & Trait Stack) */}
-        <div className="profile-body-grid">
-          {/* Left Column (7): Attribute Profile with Radar Chart */}
-          <div className="profile-radar-col">
-            <AttributeRadarChart ratings={ratings} />
+        {/* Quick Filter & Search Bar */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+          {/* Search Box */}
+          <div style={{ position: 'relative', flex: '1', minWidth: '220px' }}>
+            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              placeholder="Search by name or jersey #..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '9px 12px 9px 34px',
+                borderRadius: '8px',
+                border: '1px solid var(--border-subtle)',
+                backgroundColor: '#fff',
+                fontSize: '13.5px',
+                fontFamily: 'inherit',
+                outline: 'none',
+              }}
+            />
           </div>
 
-          {/* Right Column (5): Player Traits Panel */}
-          <div className="profile-traits-col">
-            <PlayerTraitsPanel />
+          {/* Position Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Filter size={14} style={{ color: 'var(--text-muted)' }} />
+            <select
+              value={positionFilter}
+              onChange={(e) => setPositionFilter(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border-subtle)',
+                backgroundColor: '#fff',
+                fontSize: '13px',
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="">All Positions</option>
+              <option value="GK">Goalkeepers (GK)</option>
+              <option value="DEF">Defenders (DEF)</option>
+              <option value="MID">Midfielders (MID)</option>
+              <option value="FWD">Forwards (FWD)</option>
+            </select>
+          </div>
+
+          {/* Sort By */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <ArrowUpDown size={14} style={{ color: 'var(--text-muted)' }} />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border-subtle)',
+                backgroundColor: '#fff',
+                fontSize: '13px',
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="name">Sort by Name</option>
+              <option value="jerseyNumber">Sort by Jersey #</option>
+              <option value="rating">Sort by Rating (OVR)</option>
+            </select>
           </div>
         </div>
       </section>
 
-      {/* Category Sub-Metric Breakdown Card */}
-      <SubMetricBreakdown />
+      {/* Players List Grid / Table */}
+      <section style={{ backgroundColor: '#fff', borderRadius: '18px', border: '1px solid var(--border-subtle)', overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
+        {loading ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            Loading squad roster...
+          </div>
+        ) : players.length === 0 ? (
+          <div style={{ padding: '60px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div className="empty-state-icon-circle action-sand" style={{ width: '56px', height: '56px', marginBottom: '14px' }}>
+              <Users size={28} />
+            </div>
+            <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
+              No players found
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '400px', marginBottom: '20px' }}>
+              {searchQuery || positionFilter
+                ? 'No squad members matched your current filters. Try resetting search.'
+                : 'Your squad roster is empty. Register your first player to get started.'}
+            </p>
+            <button
+              type="button"
+              className="btn-import-backup"
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              <UserPlus size={15} />
+              <span>Register First Player</span>
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '70px 2fr 100px 100px 120px 80px 40px',
+              padding: '12px 20px',
+              borderBottom: '1px solid var(--border-subtle)',
+              backgroundColor: 'var(--bg-subtle)',
+              fontSize: '11px',
+              fontWeight: 700,
+              color: 'var(--text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}>
+              <span>#</span>
+              <span>Player Name</span>
+              <span>Position</span>
+              <span>OVR Rating</span>
+              <span>Status</span>
+              <span>Foot</span>
+              <span></span>
+            </div>
 
-      {/* Edit Primary Ratings Modal Dialog */}
-      {isModalOpen && (
-        <EditRatingsModal
-          initialRatings={ratings}
-          onClose={() => setIsModalOpen(false)}
-          onUpdateRatings={(newRatings) => {
-            setRatings(newRatings);
-            setToastMessage('Attribute ratings updated successfully.');
-            setTimeout(() => setToastMessage(null), 3000);
-          }}
-        />
-      )}
+            {players.map((player) => {
+              const ovr = calcOverall(player.ratings);
+              return (
+                <div
+                  key={player.id}
+                  onClick={() => navigate(`/players/${player.id}`)}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '70px 2fr 100px 100px 120px 80px 40px',
+                    padding: '14px 20px',
+                    borderBottom: '1px solid var(--border-subtle)',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FAF7F2'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--pale-green-bg)',
+                    color: 'var(--forest-green)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    fontFamily: 'var(--font-heading)'
+                  }}>
+                    {player.jerseyNumber}
+                  </div>
+
+                  <div>
+                    <strong style={{ fontSize: '14.5px', color: 'var(--text-primary)', display: 'block' }}>
+                      {player.name}
+                    </strong>
+                    {player.notes && (
+                      <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px' }}>
+                        {player.notes}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <span className={`position-badge ${getPositionBadgeClass(player.position)}`} style={{ display: 'inline-block' }}>
+                      {player.position}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="ovr-pill-badge" style={{ fontSize: '11px', padding: '3px 8px' }}>
+                      {ovr}
+                    </span>
+                  </div>
+
+                  <div>
+                    {getStatusBadge(player.status)}
+                  </div>
+
+                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    {player.preferredFoot || 'Right'}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', color: 'var(--text-muted)' }}>
+                    <ChevronRight size={16} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Add Player Modal */}
+      <PlayerFormModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onPlayerSaved={() => {
+          loadPlayers();
+          showToast('Player registered to squad notebook.');
+        }}
+      />
     </div>
   );
 }

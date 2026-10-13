@@ -3,7 +3,9 @@ import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import Dashboard from './pages/Dashboard';
 import Players from './pages/Players';
+import PlayerProfile from './pages/PlayerProfile';
 import Matches from './pages/Matches';
+import MatchDetails from './pages/MatchDetails';
 import Statistics from './pages/Statistics';
 import Backup from './pages/Backup';
 import './App.css';
@@ -24,7 +26,9 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/players" element={<Players />} />
+              <Route path="/players/:id" element={<PlayerProfile />} />
               <Route path="/matches" element={<Matches />} />
+              <Route path="/matches/:id" element={<MatchDetails />} />
               <Route path="/stats" element={<Statistics />} />
               <Route path="/backup" element={<Backup />} />
               {/* Fallback to Dashboard */}

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   MapPin, 
@@ -10,11 +11,49 @@ import {
   FileText, 
   UserPlus, 
   LayoutList,
-  Bell
+  Bell,
+  Users,
+  Trophy
 } from 'lucide-react';
+import { playerService } from '../services/playerService';
+import { matchService } from '../services/matchService';
+import { backupService } from '../services/backupService';
+import PlayerFormModal from '../components/players/PlayerFormModal';
+import MatchFormModal from '../components/matches/MatchFormModal';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+
+  const [totalPlayers, setTotalPlayers] = useState(0);
+  const [nextMatch, setNextMatch] = useState(null);
+  const [recentCompleted, setRecentCompleted] = useState(null);
+  const [storageInfo, setStorageInfo] = useState(null);
+
+  // Quick Action Modals
+  const [isAddPlayerOpen, setIsAddPlayerOpen] = useState(false);
+  const [isNewMatchOpen, setIsNewMatchOpen] = useState(false);
+
+  const loadDashboardData = async () => {
+    try {
+      const [pCount, nMatch, compMatches, sInfo] = await Promise.all([
+        playerService.count(),
+        matchService.getNextUpcoming(),
+        matchService.getCompleted(),
+        backupService.getStorageInfo(),
+      ]);
+
+      setTotalPlayers(pCount);
+      setNextMatch(nMatch);
+      setRecentCompleted(compMatches[0] || null);
+      setStorageInfo(sInfo);
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
   return (
     <div className="dashboard-container">
@@ -26,7 +65,7 @@ export default function Dashboard() {
               Welcome back, Coach
             </h1>
             <p className="hero-subtitle">
-              Tactical board is synced, rosters are prepped, and pitch is cleared.
+              Tactical board is synced, rosters are prepped ({totalPlayers} registered), and pitch is cleared.
             </p>
           </div>
           
@@ -40,18 +79,8 @@ export default function Dashboard() {
         <div className="hero-cards-grid">
           {/* Card 1: Primary Focus - Next Session */}
           <article className="session-card">
-            {/* <div className="card-top-bar">
-              <span className="card-tag session-tag">
-                PRIMARY FOCUS - NEXT SESSION
-              </span>
-              <span className="badge badge-green">
-                Pitch A - Full Squad
-              </span>
-            </div> */}
-
             <div className="card-content-headline">
               <div className="icon-circle icon-circle-mint" aria-hidden="true">
-                {/* Football / Soccer Pitch Icon */}
                 <svg
                   width="22"
                   height="22"
@@ -72,61 +101,68 @@ export default function Dashboard() {
                 </svg>
               </div>
               <h2 className="session-title">
-                Saturday 09:30 AM
+                {nextMatch ? `${nextMatch.date} ${nextMatch.time || '09:30'}` : 'No Upcoming Match'}
               </h2>
             </div>
 
             <p className="card-description session-description">
-              Tactical drills &amp; 8v8 scrimmage scheduled. Check lineup readiness before kick-off.
+              {nextMatch
+                ? `${nextMatch.title}${nextMatch.opponent ? ` vs ${nextMatch.opponent}` : ''} • ${nextMatch.selectedPlayerIds?.length || 0} players selected.`
+                : 'Schedule your next training scrimmage or match to generate balanced teams.'}
             </p>
 
             <div className="card-footer session-footer">
               <MapPin size={14} className="location-icon" aria-hidden="true" />
-              <span>North Training Pitch - Arrive 15m early</span>
+              <span>{nextMatch?.venue || 'North Training Pitch'}</span>
             </div>
           </article>
-<article className="directive-card">
-  <div className="card-top-bar directive-top-bar">
-    <span className="badge badge-peach">Pending Logs</span>
-  </div>
 
-  <div className="card-content-headline">
-    <div className="icon-circle icon-circle-dark" aria-hidden="true">
-      <Bell size={20} className="bell-icon" strokeWidth={2.4} />
-    </div>
-    <h2 className="directive-title">Update Status After Match</h2>
-  </div>
+          {/* Card 2: Directive */}
+          <article className="directive-card">
+            <div className="card-top-bar directive-top-bar">
+              <span className="badge badge-peach">
+                {recentCompleted ? 'Logged Fixture' : 'Pending Directives'}
+              </span>
+            </div>
 
-  <p className="card-description directive-description">
-    Don't forget to record attendance, match outcome, and player statuses after the final whistle to keep analytics calibrated.
-  </p>
+            <div className="card-content-headline">
+              <div className="icon-circle icon-circle-dark" aria-hidden="true">
+                <Bell size={20} className="bell-icon" strokeWidth={2.4} />
+              </div>
+              <h2 className="directive-title">
+                {recentCompleted ? 'Update Match Log & Stats' : 'Update Status After Match'}
+              </h2>
+            </div>
 
-  <div className="card-footer directive-footer">
-    <button
-      type="button"
-      className="btn-directive"
-      onClick={() => navigate('/matches')}
-      aria-label="Update Status Now on Matches page"
-    >
-      <span>Update Status Now</span>
-      <ExternalLink size={13} strokeWidth={2.2} aria-hidden="true" />
-    </button>
-    <button
-      type="button"
-      className="link-direct-entry"
-      onClick={() => navigate('/matches')}
-    >
-      Direct log entry
-    </button>
-  </div>
-</article>
-          
-</div>   {/* closes .hero-cards-grid */}
-</section> {/* closes .welcome-hero-card */}
+            <p className="card-description directive-description">
+              {recentCompleted
+                ? `Last match: ${recentCompleted.title} (${recentCompleted.score ? `${recentCompleted.score.home}-${recentCompleted.score.away}` : 'Completed'}). Record individual ratings & stats.`
+                : "Don't forget to record attendance, match outcome, and player statuses after the final whistle."}
+            </p>
 
-     
+            <div className="card-footer directive-footer">
+              <button
+                type="button"
+                className="btn-directive"
+                onClick={() => navigate(recentCompleted ? `/matches/${recentCompleted.id}` : '/matches')}
+                aria-label="Update Status Now on Matches page"
+              >
+                <span>{recentCompleted ? 'Record Match Stats' : 'Update Status Now'}</span>
+                <ExternalLink size={13} strokeWidth={2.2} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="link-direct-entry"
+                onClick={() => navigate('/matches')}
+              >
+                All fixtures
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
 
-      {/* Immediate Directives Section */}
+      {/* Immediate Directives Section (4 Quick-Action Cards) */}
       <section className="directives-section" aria-labelledby="immediate-directives-title">
         <div className="directives-header">
           <h2 id="immediate-directives-title" className="section-eyebrow">
@@ -143,13 +179,12 @@ export default function Dashboard() {
             className="action-card"
             role="button"
             tabIndex={0}
-            onClick={() => navigate('/matches')}
-            onKeyDown={(e) => e.key === 'Enter' && navigate('/matches')}
-            aria-label="Navigate to New match"
+            onClick={() => setIsNewMatchOpen(true)}
+            onKeyDown={(e) => e.key === 'Enter' && setIsNewMatchOpen(true)}
+            aria-label="Open New match dialog"
           >
             <div className="action-card-header">
               <div className="action-icon-circle action-mint" aria-hidden="true">
-                {/* Whistle icon */}
                 <svg
                   width="20"
                   height="20"
@@ -178,9 +213,9 @@ export default function Dashboard() {
             className="action-card"
             role="button"
             tabIndex={0}
-            onClick={() => navigate('/players')}
-            onKeyDown={(e) => e.key === 'Enter' && navigate('/players')}
-            aria-label="Navigate to Add player"
+            onClick={() => setIsAddPlayerOpen(true)}
+            onKeyDown={(e) => e.key === 'Enter' && setIsAddPlayerOpen(true)}
+            aria-label="Open Add player dialog"
           >
             <div className="action-card-header">
               <div className="action-icon-circle action-peach" aria-hidden="true">
@@ -207,7 +242,6 @@ export default function Dashboard() {
               <div className="action-icon-circle action-sand" aria-hidden="true">
                 <LayoutList size={19} strokeWidth={2.2} />
               </div>
-              {/* Window / Columns icon */}
               <svg
                 width="15"
                 height="15"
@@ -241,7 +275,6 @@ export default function Dashboard() {
           >
             <div className="action-card-header">
               <div className="action-icon-circle action-sand" aria-hidden="true">
-                {/* Database / snapshot users icon */}
                 <svg
                   width="19"
                   height="19"
@@ -279,14 +312,20 @@ export default function Dashboard() {
               <h3 className="restore-title">
                 Local Storage &amp; Data Restore
               </h3>
-              <span className="badge badge-green ready-badge">Ready</span>
+              <span className="badge badge-green ready-badge">IndexedDB Ready</span>
             </div>
             <p className="restore-desc">
-              Your squad data lives locally on this device. Restore a previous roster or ledger snapshot anytime by importing a saved backup JSON file.
+              Your squad data lives locally on this device ({totalPlayers} players recorded). Restore a previous roster snapshot anytime by importing a saved backup JSON file.
             </p>
             <div className="restore-meta">
               <Clock size={12} strokeWidth={2.2} aria-hidden="true" />
-              <span>Last restored archive: 4 days ago (Oct 18, 2024 at 19:42)</span>
+              <span>
+                {storageInfo?.lastRestored
+                  ? `Last restored: ${new Date(storageInfo.lastRestored).toLocaleDateString()}`
+                  : storageInfo?.lastBackup
+                  ? `Last export: ${new Date(storageInfo.lastBackup).toLocaleDateString()}`
+                  : 'Storage active in this browser'}
+              </span>
             </div>
           </div>
         </div>
@@ -303,6 +342,24 @@ export default function Dashboard() {
           </button>
         </div>
       </section>
+
+      {/* Add Player Modal from Dashboard Quick Action */}
+      <PlayerFormModal
+        isOpen={isAddPlayerOpen}
+        onClose={() => setIsAddPlayerOpen(false)}
+        onPlayerSaved={() => {
+          loadDashboardData();
+        }}
+      />
+
+      {/* New Match Modal from Dashboard Quick Action */}
+      <MatchFormModal
+        isOpen={isNewMatchOpen}
+        onClose={() => setIsNewMatchOpen(false)}
+        onMatchSaved={() => {
+          loadDashboardData();
+        }}
+      />
     </div>
   );
 }
