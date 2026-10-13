@@ -40,14 +40,14 @@ export default function Dashboard() {
         <div className="hero-cards-grid">
           {/* Card 1: Primary Focus - Next Session */}
           <article className="session-card">
-            <div className="card-top-bar">
+            {/* <div className="card-top-bar">
               <span className="card-tag session-tag">
                 PRIMARY FOCUS - NEXT SESSION
               </span>
               <span className="badge badge-green">
                 Pitch A - Full Squad
               </span>
-            </div>
+            </div> */}
 
             <div className="card-content-headline">
               <div className="icon-circle icon-circle-mint" aria-hidden="true">
@@ -85,52 +85,46 @@ export default function Dashboard() {
               <span>North Training Pitch - Arrive 15m early</span>
             </div>
           </article>
+<article className="directive-card">
+  <div className="card-top-bar directive-top-bar">
+    <span className="badge badge-peach">Pending Logs</span>
+  </div>
 
-          {/* Card 2: Required Directive - Update Status After Match */}
-          <article className="directive-card">
-            <div className="card-top-bar">
-              <span className="card-tag directive-tag">
-                REQUIRED DIRECTIVE
-              </span>
-              <span className="badge badge-peach">
-                Pending Logs
-              </span>
-            </div>
+  <div className="card-content-headline">
+    <div className="icon-circle icon-circle-dark" aria-hidden="true">
+      <Bell size={20} className="bell-icon" strokeWidth={2.4} />
+    </div>
+    <h2 className="directive-title">Update Status After Match</h2>
+  </div>
 
-            <div className="card-content-headline">
-              <div className="icon-circle icon-circle-dark" aria-hidden="true">
-                <Bell size={20} className="bell-icon" strokeWidth={2.4} />
-              </div>
-              <h2 className="directive-title">
-                Update Status After Match
-              </h2>
-            </div>
+  <p className="card-description directive-description">
+    Don't forget to record attendance, match outcome, and player statuses after the final whistle to keep analytics calibrated.
+  </p>
 
-            <p className="card-description directive-description">
-              Don't forget to record attendance, match outcome, and player statuses after the final whistle to keep analytics calibrated.
-            </p>
+  <div className="card-footer directive-footer">
+    <button
+      type="button"
+      className="btn-directive"
+      onClick={() => navigate('/matches')}
+      aria-label="Update Status Now on Matches page"
+    >
+      <span>Update Status Now</span>
+      <ExternalLink size={13} strokeWidth={2.2} aria-hidden="true" />
+    </button>
+    <button
+      type="button"
+      className="link-direct-entry"
+      onClick={() => navigate('/matches')}
+    >
+      Direct log entry
+    </button>
+  </div>
+</article>
+          
+</div>   {/* closes .hero-cards-grid */}
+</section> {/* closes .welcome-hero-card */}
 
-            <div className="card-footer directive-footer">
-              <button
-                type="button"
-                className="btn-directive"
-                onClick={() => navigate('/matches')}
-                aria-label="Update Status Now on Matches page"
-              >
-                <span>Update Status Now</span>
-                <ExternalLink size={13} strokeWidth={2.2} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="link-direct-entry"
-                onClick={() => navigate('/matches')}
-              >
-                Direct log entry
-              </button>
-            </div>
-          </article>
-        </div>
-      </section>
+     
 
       {/* Immediate Directives Section */}
       <section className="directives-section" aria-labelledby="immediate-directives-title">
