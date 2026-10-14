@@ -1,12 +1,15 @@
 (Oct 12-16)
-On going to players section, we should get list of players, and I should be able to navigate to their profile 
-create db using IndexDB , store player info, team info, match info.
+✅On going to players section, we should get list of players, and I should be able to navigate to their profile 
 
-add players to be displayed while choosing players for a match.
+✅create db using IndexDB , store player info, team info, match info.
 
-team creation: Should be able to shuffle members across teams ,
+✅add players to be displayed while choosing players for a match.
+
+✅team creation: Should be able to shuffle members across teams ,
 also manage uneven team distribution by handling odd number of players.
 
-edit stats: Should be able to add custom fields, along with the quantitative or qualitative score.
+✅edit stats: Should be able to add custom fields, along with the quantitative or qualitative score.
 
-chart creation: Chart should be created as per the stats that have been marked as "to be included" in chart.
+⭕chart creation: Chart should be created as per the stats that have been marked as "to be included" in chart.
+
+⭕ask for the main category while creating a custom tag.

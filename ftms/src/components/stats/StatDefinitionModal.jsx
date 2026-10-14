@@ -9,7 +9,7 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
     type: 'quantitative', // 'quantitative' | 'qualitative'
     unit: '',
     inChart: true,
-    choicesStr: 'Poor, Average, Good, Excellent',
+    choicesStr: 'High, Medium, Low',
   });
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,7 +22,7 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
         type: defToEdit.type || 'quantitative',
         unit: defToEdit.unit || '',
         inChart: defToEdit.inChart === 1 || defToEdit.inChart === true,
-        choicesStr: defToEdit.choices ? defToEdit.choices.join(', ') : 'Poor, Average, Good, Excellent',
+        choicesStr: defToEdit.choices ? defToEdit.choices.join(', ') : 'High, Medium, Low',
       });
     } else {
       setFormData({
@@ -31,7 +31,7 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
         type: 'quantitative',
         unit: '',
         inChart: true,
-        choicesStr: 'Poor, Average, Good, Excellent',
+        choicesStr: 'High, Medium, Low',
       });
     }
     setError(null);
