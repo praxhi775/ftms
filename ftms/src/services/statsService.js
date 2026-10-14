@@ -21,6 +21,7 @@ export const statsService = {
     return db.statDefinitions.add({
       name: def.name.trim(),
       description: def.description?.trim() || '',
+      category: def.category?.trim() || 'General',
       type: def.type,
       unit: def.unit?.trim() || '',
       inChart: def.inChart ? 1 : 0,
@@ -31,6 +32,7 @@ export const statsService = {
   async updateDefinition(id, updates) {
     const data = { ...updates };
     if (data.inChart !== undefined) data.inChart = data.inChart ? 1 : 0;
+    if (data.category) data.category = data.category.trim();
     return db.statDefinitions.update(id, data);
   },
 

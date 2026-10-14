@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { X, CheckCircle, UserPlus, AlertCircle } from 'lucide-react';
 import { playerService } from '../../services/playerService';
+import { useModalFocusTrap } from '../../utils/useModalFocusTrap';
 
 export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, playerToEdit }) {
+  const modalRef = useModalFocusTrap({ isOpen, onClose, initialFocusSelector: 'input[name="name"], input[placeholder*="Full Name"], #player-name-input' });
   const [formData, setFormData] = useState({
     name: '',
     jerseyNumber: '',
@@ -97,7 +99,7 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="modal-content-card" style={{ maxWidth: '540px' }}>
+      <div ref={modalRef} className="modal-content-card" style={{ maxWidth: '540px' }}>
         <div className="modal-header-row">
           <div className="modal-title-group">
             <UserPlus size={18} className="modal-header-icon" />

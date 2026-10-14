@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -20,11 +20,51 @@ import EditRatingsModal from '../components/dossier/EditRatingsModal';
 import PlayerFormModal from '../components/players/PlayerFormModal';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 
+export const DEFAULT_SUBMETRICS = [
+  {
+    id: 'physical',
+    title: 'Physical',
+    avg: '81 AVG',
+    fieldType: 'Numeric',
+    metrics: [
+      { id: 'm1', name: 'Sprint Speed', inChart: true, value: '84', type: 'numeric' },
+      { id: 'm2', name: 'Acceleration', inChart: true, value: '80', type: 'numeric' },
+      { id: 'm3', name: 'Stamina', inChart: false, value: 'High', type: 'qualitative' },
+      { id: 'm4', name: 'Strength', inChart: false, value: 'Med', type: 'qualitative' },
+    ],
+  },
+  {
+    id: 'tactical',
+    title: 'Tactical',
+    avg: '80 AVG',
+    fieldType: 'High/Med/Low',
+    metrics: [
+      { id: 'm5', name: 'Vision', inChart: true, value: '82', type: 'numeric' },
+      { id: 'm6', name: 'Positioning', inChart: false, value: 'High', type: 'qualitative' },
+      { id: 'm7', name: 'Decision Making', inChart: false, value: 'High', type: 'qualitative' },
+      { id: 'm8', name: 'Press Resistance', inChart: false, value: 'Med', type: 'qualitative' },
+    ],
+  },
+  {
+    id: 'technical',
+    title: 'Technical',
+    avg: '85 AVG',
+    fieldType: 'Numeric',
+    metrics: [
+      { id: 'm9', name: 'Ball Control', inChart: true, value: '86', type: 'numeric' },
+      { id: 'm10', name: 'Short Passing', inChart: true, value: '81', type: 'numeric' },
+      { id: 'm11', name: 'Finishing', inChart: true, value: '88', type: 'numeric' },
+      { id: 'm12', name: 'First Touch', inChart: false, value: 'High', type: 'qualitative' },
+    ],
+  },
+];
+
 export default function PlayerProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [player, setPlayer] = useState(null);
+  const [categories, setCategories] = useState(DEFAULT_SUBMETRICS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [playerMatches, setPlayerMatches] = useState([]);
@@ -45,6 +85,13 @@ export default function PlayerProfile() {
         return;
       }
       setPlayer(data);
+
+      // Initialize or load subMetrics
+      if (data.subMetrics && Array.isArray(data.subMetrics) && data.subMetrics.length > 0) {
+        setCategories(data.subMetrics);
+      } else {
+        setCategories(DEFAULT_SUBMETRICS);
+      }
 
       // Load player's match history
       const allMatches = await matchService.getAll();
@@ -74,16 +121,39 @@ export default function PlayerProfile() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const ovrRating = useMemo(() => {
-    if (!player || !player.ratings) return 50;
-    return calcOverall(player.ratings);
-  }, [player]);
+  // Derive metrics that have "inChart === true"
+  const chartMetrics = useMemo(() => {
+    if (!categories) return [];
+    const list = [];
+    categories.forEach((cat) => {
+      cat.metrics.forEach((m) => {
+        if (m.inChart) {
+          list.push(m);
+        }
+      });
+    });
+    return list;
+  }, [categories]);
 
-  const handleUpdateRatings = async (newRatings) => {
+  // Overall rating derived from sub-metrics
+  const ovrRating = useMemo(() => {
+    if (!categories) return 50;
+    const numeric = categories.flatMap((c) => c.metrics.filter((m) => m.type === 'numeric'));
+    if (numeric.length === 0) {
+      return player?.ratings ? calcOverall(player.ratings) : 50;
+    }
+    const sum = numeric.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
+    return Math.round(sum / numeric.length);
+  }, [categories, player]);
+
+  const handleUpdateSubMetrics = async (newCategories) => {
     try {
-      await playerService.update(player.id, { ratings: newRatings });
-      setPlayer((prev) => ({ ...prev, ratings: newRatings }));
-      showToast('Tactical attribute ratings updated.');
+      setCategories(newCategories);
+      if (player?.id) {
+        await playerService.update(player.id, { subMetrics: newCategories });
+        setPlayer((prev) => ({ ...prev, subMetrics: newCategories }));
+      }
+      showToast('Tactical sub-metric ratings updated.');
     } catch (err) {
       showToast(err.message || 'Failed to update ratings');
     }
@@ -98,6 +168,30 @@ export default function PlayerProfile() {
       setIsDeleteDialogOpen(false);
     }
   };
+
+  // Keyboard navigation shortcuts
+  const handleKeyDown = useCallback(
+    (e) => {
+      // Don't trigger shortcuts if focus is in an input or modal is active
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      if (isEditRatingsOpen || isEditProfileOpen || isDeleteDialogOpen) return;
+
+      if (e.key === 'r' || e.key === 'R' || e.key === 'e' || e.key === 'E') {
+        e.preventDefault();
+        setIsEditRatingsOpen(true);
+      } else if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault();
+        setIsEditProfileOpen(true);
+      }
+    },
+    [isEditRatingsOpen, isEditProfileOpen, isDeleteDialogOpen]
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   if (loading) {
     return (
@@ -149,7 +243,8 @@ export default function PlayerProfile() {
             type="button"
             className="btn-dossier-action btn-export-sheet"
             onClick={() => setIsEditProfileOpen(true)}
-            aria-label="Edit Profile"
+            aria-label="Edit Profile (Press P)"
+            title="Edit Profile [P]"
           >
             <Edit3 size={15} strokeWidth={2.2} />
             <span>Edit Profile</span>
@@ -159,7 +254,8 @@ export default function PlayerProfile() {
             type="button"
             className="btn-dossier-action btn-edit-ratings"
             onClick={() => setIsEditRatingsOpen(true)}
-            aria-label="Edit Primary Ratings"
+            aria-label="Edit Sub-Metric Ratings (Press R)"
+            title="Edit Ratings [R]"
           >
             <SlidersHorizontal size={15} strokeWidth={2.2} />
             <span>Edit Ratings</span>
@@ -235,7 +331,10 @@ export default function PlayerProfile() {
         {/* Profile Body: Radar Chart & Trait Stack */}
         <div className="profile-body-grid">
           <div className="profile-radar-col">
-            <AttributeRadarChart ratings={player.ratings || { pac: 50, sho: 50, pas: 50, dri: 50, def: 50, phy: 50 }} />
+            <AttributeRadarChart
+              chartMetrics={chartMetrics}
+              ratings={player.ratings}
+            />
           </div>
 
           <div className="profile-traits-col">
@@ -245,7 +344,10 @@ export default function PlayerProfile() {
       </section>
 
       {/* SubMetric Breakdown */}
-      <SubMetricBreakdown />
+      <SubMetricBreakdown
+        categories={categories}
+        onChangeCategories={handleUpdateSubMetrics}
+      />
 
       {/* Match History & Recorded Statistics */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -268,6 +370,15 @@ export default function PlayerProfile() {
                 <div
                   key={match.id}
                   onClick={() => navigate(`/matches/${match.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/matches/${match.id}`);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`View details for ${match.title}`}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -354,12 +465,13 @@ export default function PlayerProfile() {
         </section>
       </div>
 
-      {/* Edit Ratings Modal */}
+      {/* Edit Ratings Modal (Now edits sub-metric ratings!) */}
       {isEditRatingsOpen && (
         <EditRatingsModal
-          initialRatings={player.ratings || { pac: 50, sho: 50, pas: 50, dri: 50, def: 50, phy: 50 }}
+          categories={categories}
+          playerName={player.name}
           onClose={() => setIsEditRatingsOpen(false)}
-          onUpdateRatings={handleUpdateRatings}
+          onSave={handleUpdateSubMetrics}
         />
       )}
 

@@ -1,104 +1,100 @@
 import { useState } from 'react';
 import { Activity, Compass, Zap, Plus, Minus, Check, X, ClipboardList } from 'lucide-react';
+import AddCustomMetricModal from './AddCustomMetricModal';
 
-const INITIAL_CATEGORIES = [
-  {
-    id: 'physical',
-    title: 'Physical',
-    avg: '81 AVG',
-    icon: Activity,
-    fieldType: 'Numeric',
-    metrics: [
-      { id: 'm1', name: 'Sprint Speed', inChart: true, value: '84', type: 'numeric' },
-      { id: 'm2', name: 'Acceleration', inChart: true, value: '80', type: 'numeric' },
-      { id: 'm3', name: 'Stamina', inChart: false, value: 'High', type: 'qualitative' },
-      { id: 'm4', name: 'Strength', inChart: false, value: 'Med', type: 'qualitative' },
-    ],
-  },
-  {
-    id: 'tactical',
-    title: 'Tactical',
-    avg: '80 AVG',
-    icon: Compass,
-    fieldType: 'High/Med/Low',
-    metrics: [
-      { id: 'm5', name: 'Vision', inChart: true, value: '82', type: 'numeric' },
-      { id: 'm6', name: 'Positioning', inChart: false, value: 'High', type: 'qualitative' },
-      { id: 'm7', name: 'Decision Making', inChart: false, value: 'High', type: 'qualitative' },
-      { id: 'm8', name: 'Press Resistance', inChart: false, value: 'Med', type: 'qualitative' },
-    ],
-  },
-  {
-    id: 'technical',
-    title: 'Technical',
-    avg: '85 AVG',
-    icon: Zap,
-    fieldType: 'Numeric',
-    metrics: [
-      { id: 'm9', name: 'Ball Control', inChart: true, value: '86', type: 'numeric' },
-      { id: 'm10', name: 'Short Passing', inChart: true, value: '81', type: 'numeric' },
-      { id: 'm11', name: 'Finishing', inChart: true, value: '88', type: 'numeric' },
-      { id: 'm12', name: 'First Touch', inChart: false, value: 'High', type: 'qualitative' },
-    ],
-  },
-];
+const DEFAULT_CATEGORY_ICONS = {
+  physical: Activity,
+  tactical: Compass,
+  technical: Zap,
+};
 
-export default function SubMetricBreakdown() {
-  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
+export default function SubMetricBreakdown({
+  categories = [],
+  onChangeCategories,
+}) {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [targetCatId, setTargetCatId] = useState('physical');
 
   const handleToggleChart = (catId, metricId) => {
-    setCategories((prev) =>
-      prev.map((cat) => {
-        if (cat.id !== catId) return cat;
-        return {
-          ...cat,
-          metrics: cat.metrics.map((m) =>
-            m.id === metricId ? { ...m, inChart: !m.inChart } : m
-          ),
-        };
-      })
-    );
+    if (!onChangeCategories) return;
+    const updated = categories.map((cat) => {
+      if (cat.id !== catId) return cat;
+      return {
+        ...cat,
+        metrics: cat.metrics.map((m) =>
+          m.id === metricId ? { ...m, inChart: !m.inChart } : m
+        ),
+      };
+    });
+    onChangeCategories(updated);
   };
 
   const handleRemoveMetric = (catId, metricId) => {
-    setCategories((prev) =>
-      prev.map((cat) => {
-        if (cat.id !== catId) return cat;
-        return {
-          ...cat,
-          metrics: cat.metrics.filter((m) => m.id !== metricId),
-        };
-      })
-    );
+    if (!onChangeCategories) return;
+    const updated = categories.map((cat) => {
+      if (cat.id !== catId) return cat;
+      const filtered = cat.metrics.filter((m) => m.id !== metricId);
+      // Recalculate average
+      const numeric = filtered.filter((m) => m.type === 'numeric');
+      let avgStr = cat.avg;
+      if (numeric.length > 0) {
+        const sum = numeric.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
+        avgStr = `${Math.round(sum / numeric.length)} AVG`;
+      }
+      return {
+        ...cat,
+        metrics: filtered,
+        avg: avgStr,
+      };
+    });
+    onChangeCategories(updated);
   };
 
   const handleChangeFieldType = (catId, newType) => {
-    setCategories((prev) =>
-      prev.map((cat) => (cat.id === catId ? { ...cat, fieldType: newType } : cat))
-    );
+    if (!onChangeCategories) return;
+    const updated = categories.map((cat) => {
+      if (cat.id !== catId) return cat;
+      return {
+        ...cat,
+        fieldType: newType,
+      };
+    });
+    onChangeCategories(updated);
   };
 
-  const handleAddMetric = (catId) => {
-    const promptName = window.prompt('Enter new metric name:');
-    if (!promptName || !promptName.trim()) return;
+  const handleOpenAddModal = (catId) => {
+    setTargetCatId(catId);
+    setIsAddModalOpen(true);
+  };
 
-    setCategories((prev) =>
-      prev.map((cat) => {
-        if (cat.id !== catId) return cat;
-        const isNumeric = cat.fieldType === 'Numeric';
-        const newMetric = {
-          id: `custom-${Date.now()}`,
-          name: promptName.trim(),
-          inChart: false,
-          value: isNumeric ? '80' : 'High',
-          type: isNumeric ? 'numeric' : 'qualitative',
-        };
-        return {
-          ...cat,
-          metrics: [...cat.metrics, newMetric],
-        };
-      })
-    );
+  const handleAddMetricSubmit = (newMetricData) => {
+    if (!onChangeCategories) return;
+    const { categoryId, name, type, value, inChart } = newMetricData;
+
+    const updated = categories.map((cat) => {
+      if (cat.id !== categoryId) return cat;
+      const newMetric = {
+        id: `custom-${Date.now()}`,
+        name,
+        type,
+        value,
+        inChart,
+      };
+      const updatedMetrics = [...cat.metrics, newMetric];
+      const numeric = updatedMetrics.filter((m) => m.type === 'numeric');
+      let avgStr = cat.avg;
+      if (numeric.length > 0) {
+        const sum = numeric.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
+        avgStr = `${Math.round(sum / numeric.length)} AVG`;
+      }
+      return {
+        ...cat,
+        metrics: updatedMetrics,
+        avg: avgStr,
+      };
+    });
+
+    onChangeCategories(updated);
   };
 
   return (
@@ -118,28 +114,28 @@ export default function SubMetricBreakdown() {
       {/* Responsive Three-Column Grid */}
       <div className="submetric-columns-grid">
         {categories.map((cat) => {
-          const Icon = cat.icon;
+          const Icon = DEFAULT_CATEGORY_ICONS[cat.id] || Activity;
           return (
-            <article key={cat.id} className="category-metric-card">
+            <article key={cat.id} className="category-metric-card" aria-labelledby={`cat-title-${cat.id}`}>
               {/* Category Top Banner */}
               <div className="category-card-top">
                 <div className="category-title-row">
                   <Icon size={16} strokeWidth={2.2} className="cat-icon" />
-                  <h3 className="category-name">{cat.title}</h3>
+                  <h3 id={`cat-title-${cat.id}`} className="category-name">{cat.title}</h3>
                 </div>
                 <span className="category-avg-badge">{cat.avg}</span>
               </div>
 
               {/* Rows List */}
-              <div className="metric-rows-list">
+              <div className="metric-rows-list" role="list">
                 {cat.metrics.map((metric) => (
-                  <div key={metric.id} className="submetric-row">
+                  <div key={metric.id} className="submetric-row" role="listitem">
                     {/* Remove Action */}
                     <button
                       type="button"
                       className="btn-remove-metric"
                       onClick={() => handleRemoveMetric(cat.id, metric.id)}
-                      aria-label={`Remove ${metric.name}`}
+                      aria-label={`Remove ${metric.name} from ${cat.title}`}
                     >
                       <Minus size={12} strokeWidth={2.5} />
                     </button>
@@ -154,7 +150,8 @@ export default function SubMetricBreakdown() {
                         metric.inChart ? 'chart-active' : 'chart-off'
                       }`}
                       onClick={() => handleToggleChart(cat.id, metric.id)}
-                      aria-label={`Toggle ${metric.name} chart display`}
+                      aria-label={`${metric.name} radar display: ${metric.inChart ? 'Chart active' : 'Off'}. Press to toggle.`}
+                      aria-pressed={metric.inChart}
                     >
                       {metric.inChart ? (
                         <>
@@ -175,7 +172,7 @@ export default function SubMetricBreakdown() {
                         <span className="metric-numeric-val">{metric.value}</span>
                       ) : (
                         <span
-                          className={`metric-qual-badge badge-${metric.value.toLowerCase()}`}
+                          className={`metric-qual-badge badge-${String(metric.value).toLowerCase()}`}
                         >
                           {metric.value}
                         </span>
@@ -188,10 +185,16 @@ export default function SubMetricBreakdown() {
               {/* Card Footer: Field Type selector & Add Button */}
               <div className="category-card-footer">
                 <div className="field-type-selector-row">
-                  <span className="field-type-label">NEW FIELD TYPE:</span>
-                  <div className="field-type-pills">
+                  <span className="field-type-label" id={`field-type-lbl-${cat.id}`}>NEW FIELD TYPE:</span>
+                  <div
+                    className="field-type-pills"
+                    role="radiogroup"
+                    aria-labelledby={`field-type-lbl-${cat.id}`}
+                  >
                     <button
                       type="button"
+                      role="radio"
+                      aria-checked={cat.fieldType === 'Numeric'}
                       className={`type-pill ${
                         cat.fieldType === 'Numeric' ? 'active' : ''
                       }`}
@@ -201,6 +204,8 @@ export default function SubMetricBreakdown() {
                     </button>
                     <button
                       type="button"
+                      role="radio"
+                      aria-checked={cat.fieldType === 'High/Med/Low'}
                       className={`type-pill ${
                         cat.fieldType === 'High/Med/Low' ? 'active' : ''
                       }`}
@@ -214,16 +219,26 @@ export default function SubMetricBreakdown() {
                 <button
                   type="button"
                   className="btn-add-custom-field"
-                  onClick={() => handleAddMetric(cat.id)}
+                  onClick={() => handleOpenAddModal(cat.id)}
+                  aria-label={`Add custom field to ${cat.title}`}
                 >
                   <Plus size={14} strokeWidth={2.5} />
-                  <span>Add custom field</span>
+                  <span>+ Add custom field</span>
                 </button>
               </div>
             </article>
           );
         })}
       </div>
+
+      {/* Add Custom Metric Modal (Asks for Main Category) */}
+      <AddCustomMetricModal
+        isOpen={isAddModalOpen}
+        initialCategoryId={targetCatId}
+        categories={categories}
+        onClose={() => setIsAddModalOpen(false)}
+        onAddMetric={handleAddMetricSubmit}
+      />
     </section>
   );
 }

@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { X, CheckCircle, Trophy, Users, Search, AlertCircle } from 'lucide-react';
 import { playerService } from '../../services/playerService';
 import { matchService } from '../../services/matchService';
+import { useModalFocusTrap } from '../../utils/useModalFocusTrap';
 
 export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToEdit }) {
+  const modalRef = useModalFocusTrap({ isOpen, onClose });
   const [formData, setFormData] = useState({
     title: '',
     opponent: '',
@@ -140,7 +142,7 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="modal-content-card" style={{ maxWidth: '640px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+      <div ref={modalRef} className="modal-content-card" style={{ maxWidth: '640px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
         <div className="modal-header-row">
           <div className="modal-title-group">

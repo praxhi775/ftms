@@ -77,6 +77,22 @@ export default function Statistics() {
     loadAllData();
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      if (isAddDefOpen || defToDelete) return;
+
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        setDefToEdit(null);
+        setIsAddDefOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isAddDefOpen, defToDelete]);
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
@@ -348,6 +364,11 @@ export default function Statistics() {
                     <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>
                       {def.name}
                     </strong>
+                    {def.category && (
+                      <span className="badge badge-sand" style={{ fontSize: '10px', fontWeight: 700 }}>
+                        {def.category}
+                      </span>
+                    )}
                     <span className="badge badge-peach" style={{ fontSize: '10px', textTransform: 'capitalize' }}>
                       {def.type}
                     </span>

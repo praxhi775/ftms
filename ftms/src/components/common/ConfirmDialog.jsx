@@ -1,4 +1,5 @@
 import { AlertTriangle, X } from 'lucide-react';
+import { useModalFocusTrap } from '../../utils/useModalFocusTrap';
 
 export default function ConfirmDialog({
   isOpen,
@@ -9,6 +10,8 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }) {
+  const modalRef = useModalFocusTrap({ isOpen, onClose: onCancel, initialFocusSelector: '.btn-modal-cancel' });
+
   if (!isOpen) return null;
 
   return (
@@ -16,11 +19,16 @@ export default function ConfirmDialog({
       className="modal-overlay-backdrop"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="confirm-dialog-title"
       onClick={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
     >
-      <div className="modal-content-card" style={{ maxWidth: '420px', padding: '24px' }}>
+      <div
+        ref={modalRef}
+        className="modal-content-card"
+        style={{ maxWidth: '420px', padding: '24px' }}
+      >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '16px' }}>
           <div
             style={{
@@ -38,7 +46,7 @@ export default function ConfirmDialog({
             <AlertTriangle size={20} />
           </div>
           <div style={{ flex: 1 }}>
-            <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+            <h3 id="confirm-dialog-title" style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
               {title}
             </h3>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
@@ -48,6 +56,7 @@ export default function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
+            aria-label="Close confirmation dialog"
             style={{ color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
           >
             <X size={18} />

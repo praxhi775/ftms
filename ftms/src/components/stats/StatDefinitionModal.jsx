@@ -1,10 +1,24 @@
 import { useState, useEffect } from 'react';
 import { X, CheckCircle, Sliders, AlertCircle } from 'lucide-react';
 import { statsService } from '../../services/statsService';
+import { useModalFocusTrap } from '../../utils/useModalFocusTrap';
+
+export const STAT_CATEGORIES = [
+  'Physical',
+  'Tactical',
+  'Technical',
+  'Defending',
+  'Goalkeeping',
+  'Mental',
+  'General',
+];
 
 export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdit }) {
+  const modalRef = useModalFocusTrap({ isOpen, onClose, initialFocusSelector: '#stat-name-input' });
+
   const [formData, setFormData] = useState({
     name: '',
+    category: 'Technical',
     description: '',
     type: 'quantitative', // 'quantitative' | 'qualitative'
     unit: '',
@@ -18,6 +32,7 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
     if (defToEdit) {
       setFormData({
         name: defToEdit.name || '',
+        category: defToEdit.category || 'Technical',
         description: defToEdit.description || '',
         type: defToEdit.type || 'quantitative',
         unit: defToEdit.unit || '',
@@ -27,6 +42,7 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
     } else {
       setFormData({
         name: '',
+        category: 'Technical',
         description: '',
         type: 'quantitative',
         unit: '',
@@ -48,6 +64,9 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
       if (!formData.name.trim()) {
         throw new Error('Statistic name is required.');
       }
+      if (!formData.category) {
+        throw new Error('Main category is required.');
+      }
 
       const choices = formData.type === 'qualitative'
         ? formData.choicesStr.split(',').map((c) => c.trim()).filter(Boolean)
@@ -55,6 +74,7 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
 
       const payload = {
         name: formData.name.trim(),
+        category: formData.category.trim(),
         description: formData.description.trim(),
         type: formData.type,
         unit: formData.type === 'quantitative' ? formData.unit.trim() : '',
@@ -82,25 +102,31 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
       className="modal-overlay-backdrop"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="stat-modal-title"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="modal-content-card" style={{ maxWidth: '480px' }}>
+      <div ref={modalRef} className="modal-content-card" style={{ maxWidth: '480px' }}>
         <div className="modal-header-row">
           <div className="modal-title-group">
             <Sliders size={18} className="modal-header-icon" />
-            <h2 className="modal-heading">
+            <h2 id="stat-modal-title" className="modal-heading">
               {defToEdit ? 'Edit Custom Statistic' : 'Create Custom Statistic'}
             </h2>
           </div>
-          <button type="button" className="btn-modal-close" onClick={onClose}>
+          <button
+            type="button"
+            className="btn-modal-close"
+            onClick={onClose}
+            aria-label="Close dialog"
+          >
             <X size={18} />
           </button>
         </div>
 
         <p className="modal-description">
-          Define custom metrics to track player performance across matches and visualize in squad charts.
+          Define custom metrics with designated main categories to track player performance across matches.
         </p>
 
         {error && (
@@ -122,12 +148,14 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Statistic Name */}
           <div className="rating-input-field">
-            <label className="rating-field-label">Statistic Name *</label>
+            <label htmlFor="stat-name-input" className="rating-field-label">Statistic Name *</label>
             <input
+              id="stat-name-input"
               type="text"
               required
-              placeholder="e.g. Tackles Won, Teamwork, Interceptions..."
+              placeholder="e.g. Tackles Won, Teamwork, Interceptions, Key Passes..."
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               style={{
@@ -141,10 +169,40 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
             />
           </div>
 
+          {/* Main Category */}
+          <div className="rating-input-field">
+            <label htmlFor="stat-category-input" className="rating-field-label">Main Category *</label>
+            <select
+              id="stat-category-input"
+              required
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border-strong)',
+                fontFamily: 'inherit',
+                fontSize: '13.5px',
+                backgroundColor: '#fff',
+              }}
+            >
+              {STAT_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              Specifies the primary tactical category for grouping and analysis
+            </span>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div className="rating-input-field">
-              <label className="rating-field-label">Data Type</label>
+              <label htmlFor="stat-type-input" className="rating-field-label">Data Type</label>
               <select
+                id="stat-type-input"
                 value={formData.type}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                 style={{
@@ -163,8 +221,9 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
             </div>
 
             <div className="rating-input-field">
-              <label className="rating-field-label">Unit (Optional)</label>
+              <label htmlFor="stat-unit-input" className="rating-field-label">Unit (Optional)</label>
               <input
+                id="stat-unit-input"
                 type="text"
                 placeholder="e.g. %, km, goals"
                 disabled={formData.type === 'qualitative'}
@@ -185,8 +244,9 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
 
           {formData.type === 'qualitative' && (
             <div className="rating-input-field">
-              <label className="rating-field-label">Choices (comma-separated)</label>
+              <label htmlFor="stat-choices-input" className="rating-field-label">Choices (comma-separated)</label>
               <input
+                id="stat-choices-input"
                 type="text"
                 placeholder="Poor, Average, Good, Excellent"
                 value={formData.choicesStr}
@@ -204,8 +264,9 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
           )}
 
           <div className="rating-input-field">
-            <label className="rating-field-label">Description (Optional)</label>
+            <label htmlFor="stat-desc-input" className="rating-field-label">Description (Optional)</label>
             <input
+              id="stat-desc-input"
               type="text"
               placeholder="Brief summary of what this stat measures..."
               value={formData.description}

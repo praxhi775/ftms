@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, CheckCircle, Award } from 'lucide-react';
 import { statsService } from '../../services/statsService';
+import { useModalFocusTrap } from '../../utils/useModalFocusTrap';
 
 export default function RecordStatsModal({
   isOpen,
@@ -11,6 +12,7 @@ export default function RecordStatsModal({
   existingStats = [],
   onStatsSaved,
 }) {
+  const modalRef = useModalFocusTrap({ isOpen, onClose });
   // Key format: `${playerId}_${statDefId}` -> value
   const [statValues, setStatValues] = useState(() => {
     const map = {};
@@ -75,7 +77,7 @@ export default function RecordStatsModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="modal-content-card" style={{ maxWidth: '700px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+      <div ref={modalRef} className="modal-content-card" style={{ maxWidth: '700px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
         <div className="modal-header-row">
           <div className="modal-title-group">

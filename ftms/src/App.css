@@ -2717,6 +2717,45 @@
   color: #003B1B;
 }
 
+/* Accessible Keyboard Navigation & Focus Visible Styles */
+:focus-visible {
+  outline: 2px solid var(--forest-green, #003B1B);
+  outline-offset: 2px;
+}
+
+.radar-attribute-badge:focus-visible,
+.radar-attribute-badge.badge-focused {
+  outline: 2px solid #003B1B !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(0, 59, 27, 0.2);
+  z-index: 10;
+}
+
+.btn-chart-toggle:focus-visible {
+  outline: 2px solid #003B1B;
+  outline-offset: 2px;
+}
+
+.btn-remove-metric:focus-visible {
+  outline: 2px solid #DC2626;
+  outline-offset: 2px;
+  background-color: #FEE2E2;
+  color: #DC2626;
+}
+
+.type-pill:focus-visible {
+  outline: 2px solid #003B1B;
+  outline-offset: 2px;
+}
+
+.btn-add-custom-field:focus-visible {
+  outline: 2px solid #003B1B;
+  outline-offset: 2px;
+  background-color: #F3EFE7;
+  border-color: #003B1B;
+  color: #003B1B;
+}
+
 /* ==========================================================================
    Edit Ratings Modal
    ========================================================================== */
