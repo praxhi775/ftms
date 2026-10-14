@@ -7,10 +7,6 @@ export const STAT_CATEGORIES = [
   'Physical',
   'Tactical',
   'Technical',
-  'Defending',
-  'Goalkeeping',
-  'Mental',
-  'General',
 ];
 
 export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdit }) {
