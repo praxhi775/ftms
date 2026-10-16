@@ -22,3 +22,9 @@ also manage uneven team distribution by handling odd number of players.
 ⭕ Remove the option of adding custom field in player profile.
 
 ⭕ I should be able to manually create a team, with option to add guest players (do add drag and drop support).
+
+⭕ Height constraints : >100cm and <250cm
+
+⭕ Weight constraints : >20 kg and <200kg
+
+⭕ Name field can have upto 100 chars.
