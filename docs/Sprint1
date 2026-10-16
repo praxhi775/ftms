@@ -10,7 +10,15 @@ also manage uneven team distribution by handling odd number of players.
 
 ✅edit stats: Should be able to add custom fields, along with the quantitative or qualitative score.
 
-⭕chart creation: Chart should be created as per the stats that have been marked as "to be included" in chart.
+✅chart creation: Chart should be created as per the stats that have been marked as "to be included" in chart.
 
-⭕ask for the main category while creating a custom tag.
-⭕ work on keyboard nav.
+✅ask for the main category while creating a custom tag.
+✅ work on keyboard nav.
+
+⭕ Squad Roaster table can show for useful information.
+
+⭕ Player <-> Squad Roast, "SQUAD ROSTER/FWD/#18 Alex Ward" the titles and breadcrumbs are not in sync.
+
+⭕ Remove the option of adding custom field in player profile.
+
+⭕ I should be able to manually create a team, with option to add guest players (do add drag and drop support).
