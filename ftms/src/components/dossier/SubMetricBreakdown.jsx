@@ -1,6 +1,4 @@
-import { useState } from 'react';
-import { Activity, Compass, Zap, Plus, Minus, Check, X, ClipboardList } from 'lucide-react';
-import AddCustomMetricModal from './AddCustomMetricModal';
+import { Activity, Compass, Zap, Minus, Check, X, ClipboardList } from 'lucide-react';
 
 const DEFAULT_CATEGORY_ICONS = {
   physical: Activity,
@@ -12,9 +10,6 @@ export default function SubMetricBreakdown({
   categories = [],
   onChangeCategories,
 }) {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [targetCatId, setTargetCatId] = useState('physical');
-
   const handleToggleChart = (catId, metricId) => {
     if (!onChangeCategories) return;
     const updated = categories.map((cat) => {
@@ -47,53 +42,6 @@ export default function SubMetricBreakdown({
         avg: avgStr,
       };
     });
-    onChangeCategories(updated);
-  };
-
-  const handleChangeFieldType = (catId, newType) => {
-    if (!onChangeCategories) return;
-    const updated = categories.map((cat) => {
-      if (cat.id !== catId) return cat;
-      return {
-        ...cat,
-        fieldType: newType,
-      };
-    });
-    onChangeCategories(updated);
-  };
-
-  const handleOpenAddModal = (catId) => {
-    setTargetCatId(catId);
-    setIsAddModalOpen(true);
-  };
-
-  const handleAddMetricSubmit = (newMetricData) => {
-    if (!onChangeCategories) return;
-    const { categoryId, name, type, value, inChart } = newMetricData;
-
-    const updated = categories.map((cat) => {
-      if (cat.id !== categoryId) return cat;
-      const newMetric = {
-        id: `custom-${Date.now()}`,
-        name,
-        type,
-        value,
-        inChart,
-      };
-      const updatedMetrics = [...cat.metrics, newMetric];
-      const numeric = updatedMetrics.filter((m) => m.type === 'numeric');
-      let avgStr = cat.avg;
-      if (numeric.length > 0) {
-        const sum = numeric.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
-        avgStr = `${Math.round(sum / numeric.length)} AVG`;
-      }
-      return {
-        ...cat,
-        metrics: updatedMetrics,
-        avg: avgStr,
-      };
-    });
-
     onChangeCategories(updated);
   };
 
@@ -181,64 +129,10 @@ export default function SubMetricBreakdown({
                   </div>
                 ))}
               </div>
-
-              {/* Card Footer: Field Type selector & Add Button */}
-              <div className="category-card-footer">
-                <div className="field-type-selector-row">
-                  <span className="field-type-label" id={`field-type-lbl-${cat.id}`}>NEW FIELD TYPE:</span>
-                  <div
-                    className="field-type-pills"
-                    role="radiogroup"
-                    aria-labelledby={`field-type-lbl-${cat.id}`}
-                  >
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={cat.fieldType === 'Numeric'}
-                      className={`type-pill ${
-                        cat.fieldType === 'Numeric' ? 'active' : ''
-                      }`}
-                      onClick={() => handleChangeFieldType(cat.id, 'Numeric')}
-                    >
-                      Numeric
-                    </button>
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={cat.fieldType === 'High/Med/Low'}
-                      className={`type-pill ${
-                        cat.fieldType === 'High/Med/Low' ? 'active' : ''
-                      }`}
-                      onClick={() => handleChangeFieldType(cat.id, 'High/Med/Low')}
-                    >
-                      High/Med/Low
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="btn-add-custom-field"
-                  onClick={() => handleOpenAddModal(cat.id)}
-                  aria-label={`Add custom field to ${cat.title}`}
-                >
-                  <Plus size={14} strokeWidth={2.5} />
-                  <span>+ Add custom field</span>
-                </button>
-              </div>
             </article>
           );
         })}
       </div>
-
-      {/* Add Custom Metric Modal (Asks for Main Category) */}
-      <AddCustomMetricModal
-        isOpen={isAddModalOpen}
-        initialCategoryId={targetCatId}
-        categories={categories}
-        onClose={() => setIsAddModalOpen(false)}
-        onAddMetric={handleAddMetricSubmit}
-      />
     </section>
   );
 }

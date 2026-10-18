@@ -1,5 +1,5 @@
-import { useState, useEffect, useTransition } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useTransition, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Users, 
   UserPlus, 
@@ -7,23 +7,43 @@ import {
   Filter, 
   ArrowUpDown, 
   ChevronRight, 
-  AlertCircle 
+  Activity,
+  HeartPulse,
+  Award,
+  ShieldCheck,
+  Eye
 } from 'lucide-react';
 import { playerService, calcOverall } from '../services/playerService';
 import PlayerFormModal from '../components/players/PlayerFormModal';
 
 export default function Players() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [, startTransition] = useTransition();
+
+  const urlPos = searchParams.get('position') || '';
 
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [positionFilter, setPositionFilter] = useState('');
+  const [positionFilter, setPositionFilter] = useState(urlPos);
   const [sortBy, setSortBy] = useState('name');
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+
+  useEffect(() => {
+    document.title = 'Squad Roster | Team Manager';
+    return () => {
+      document.title = 'Team Manager | Sunday Squad Notebook';
+    };
+  }, []);
+
+  useEffect(() => {
+    if (urlPos !== positionFilter) {
+      setPositionFilter(urlPos);
+    }
+  }, [urlPos]);
 
   const loadPlayers = async () => {
     try {
@@ -49,14 +69,38 @@ export default function Players() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // Squad Summary Metrics
+  const squadStats = useMemo(() => {
+    const total = players.length;
+    const active = players.filter((p) => p.status === 'active').length;
+    const injured = players.filter((p) => p.status === 'injured').length;
+    const inactive = players.filter((p) => p.status === 'inactive').length;
+    const avgOvr = total > 0 
+      ? Math.round(players.reduce((acc, p) => acc + calcOverall(p.ratings), 0) / total)
+      : 0;
+    return { total, active, injured, inactive, avgOvr };
+  }, [players]);
+
   const getStatusBadge = (status) => {
     if (status === 'injured') {
-      return <span className="badge badge-peach" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>Injured</span>;
+      return (
+        <span className="badge badge-peach" style={{ backgroundColor: '#FEE2E2', color: '#991B1B', fontWeight: 600 }}>
+          Injured
+        </span>
+      );
     }
     if (status === 'inactive') {
-      return <span className="badge badge-peach" style={{ backgroundColor: '#F3F4F6', color: '#4B5563' }}>Inactive</span>;
+      return (
+        <span className="badge badge-peach" style={{ backgroundColor: '#F3F4F6', color: '#4B5563', fontWeight: 600 }}>
+          Inactive
+        </span>
+      );
     }
-    return <span className="badge badge-green">Active</span>;
+    return (
+      <span className="badge badge-green" style={{ fontWeight: 600 }}>
+        Active
+      </span>
+    );
   };
 
   const getPositionBadgeClass = (pos) => {
@@ -66,6 +110,15 @@ export default function Players() {
       case 'MID': return 'badge-mid';
       case 'FWD': return 'badge-att';
       default: return 'badge-mid';
+    }
+  };
+
+  const handlePositionFilterChange = (newPos) => {
+    setPositionFilter(newPos);
+    if (newPos) {
+      setSearchParams({ position: newPos });
+    } else {
+      setSearchParams({});
     }
   };
 
@@ -127,7 +180,7 @@ export default function Players() {
             <Filter size={14} style={{ color: 'var(--text-muted)' }} />
             <select
               value={positionFilter}
-              onChange={(e) => setPositionFilter(e.target.value)}
+              onChange={(e) => handlePositionFilterChange(e.target.value)}
               style={{
                 padding: '8px 12px',
                 borderRadius: '8px',
@@ -165,12 +218,64 @@ export default function Players() {
               <option value="name">Sort by Name</option>
               <option value="jerseyNumber">Sort by Jersey #</option>
               <option value="rating">Sort by Rating (OVR)</option>
+              <option value="age">Sort by Age</option>
+              <option value="position">Sort by Position</option>
             </select>
+          </div>
+        </div>
+
+        {/* Squad Summary Stats Bar */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+          gap: '12px',
+          marginTop: '18px',
+          paddingTop: '16px',
+          borderTop: '1px solid var(--border-subtle)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#FAF7F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--forest-green)' }}>
+              <Users size={16} />
+            </div>
+            <div>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, display: 'block' }}>Roster Size</span>
+              <strong style={{ fontSize: '15px', color: 'var(--text-primary)' }}>{squadStats.total} Players</strong>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#047857' }}>
+              <ShieldCheck size={16} />
+            </div>
+            <div>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, display: 'block' }}>Active Ready</span>
+              <strong style={{ fontSize: '15px', color: '#047857' }}>{squadStats.active}</strong>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B91C1C' }}>
+              <HeartPulse size={16} />
+            </div>
+            <div>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, display: 'block' }}>Injured/Away</span>
+              <strong style={{ fontSize: '15px', color: '#B91C1C' }}>{squadStats.injured + squadStats.inactive}</strong>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B45309' }}>
+              <Award size={16} />
+            </div>
+            <div>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, display: 'block' }}>Squad Avg OVR</span>
+              <strong style={{ fontSize: '15px', color: 'var(--text-primary)' }}>{squadStats.avgOvr}</strong>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Players List Grid / Table */}
+      {/* Players List Grid / Table with Rich Useful Information */}
       <section style={{ backgroundColor: '#fff', borderRadius: '18px', border: '1px solid var(--border-subtle)', overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
         {loading ? (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -199,38 +304,39 @@ export default function Players() {
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div>
+            {/* Table Header: Only Player Name, Pos, OVR, Status */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '70px 2fr 100px 100px 120px 80px 40px',
-              padding: '12px 20px',
+              gridTemplateColumns: '2fr 110px 110px 130px',
+              padding: '14px 24px',
               borderBottom: '1px solid var(--border-subtle)',
               backgroundColor: 'var(--bg-subtle)',
               fontSize: '11px',
               fontWeight: 700,
               color: 'var(--text-muted)',
               textTransform: 'uppercase',
-              letterSpacing: '0.05em'
+              letterSpacing: '0.05em',
+              alignItems: 'center'
             }}>
-              <span>#</span>
               <span>Player Name</span>
-              <span>Position</span>
-              <span>OVR Rating</span>
+              <span>Pos</span>
+              <span style={{ textAlign: 'center' }}>OVR</span>
               <span>Status</span>
-              <span>Foot</span>
-              <span></span>
             </div>
 
+            {/* Player Rows: Only Player Name, Pos, OVR, Status */}
             {players.map((player) => {
               const ovr = calcOverall(player.ratings);
+
               return (
                 <div
                   key={player.id}
                   onClick={() => navigate(`/players/${player.id}`)}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '70px 2fr 100px 100px 120px 80px 40px',
-                    padding: '14px 20px',
+                    gridTemplateColumns: '2fr 110px 110px 130px',
+                    padding: '14px 24px',
                     borderBottom: '1px solid var(--border-subtle)',
                     alignItems: 'center',
                     cursor: 'pointer',
@@ -239,55 +345,30 @@ export default function Players() {
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FAF7F2'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    backgroundColor: 'var(--pale-green-bg)',
-                    color: 'var(--forest-green)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontSize: '13px',
-                    fontFamily: 'var(--font-heading)'
-                  }}>
-                    {player.jerseyNumber}
-                  </div>
-
+                  {/* Player Name */}
                   <div>
                     <strong style={{ fontSize: '14.5px', color: 'var(--text-primary)', display: 'block' }}>
                       {player.name}
                     </strong>
-                    {player.notes && (
-                      <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px' }}>
-                        {player.notes}
-                      </span>
-                    )}
                   </div>
 
+                  {/* Position */}
                   <div>
                     <span className={`position-badge ${getPositionBadgeClass(player.position)}`} style={{ display: 'inline-block' }}>
                       {player.position}
                     </span>
                   </div>
 
-                  <div>
+                  {/* Overall Rating */}
+                  <div style={{ textAlign: 'center' }}>
                     <span className="ovr-pill-badge" style={{ fontSize: '11px', padding: '3px 8px' }}>
                       {ovr}
                     </span>
                   </div>
 
+                  {/* Status */}
                   <div>
                     {getStatusBadge(player.status)}
-                  </div>
-
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    {player.preferredFoot || 'Right'}
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', color: 'var(--text-muted)' }}>
-                    <ChevronRight size={16} />
                   </div>
                 </div>
               );

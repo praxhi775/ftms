@@ -57,8 +57,12 @@ export const matchService = {
     });
   },
 
-  async saveTeams(id, teams) {
-    return db.matches.update(id, { teams });
+  async saveTeams(id, teams, guestPlayers) {
+    const updateObj = { teams };
+    if (guestPlayers !== undefined) {
+      updateObj.guestPlayers = guestPlayers;
+    }
+    return db.matches.update(id, updateObj);
   },
 
   async remove(id) {

@@ -59,8 +59,25 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
       if (!formData.name.trim()) {
         throw new Error('Player full name is required.');
       }
+      if (formData.name.trim().length > 100) {
+        throw new Error('Player name cannot exceed 100 characters.');
+      }
       if (formData.jerseyNumber === '' || isNaN(Number(formData.jerseyNumber))) {
         throw new Error('A valid jersey number is required.');
+      }
+
+      if (formData.height !== '' && formData.height !== null && formData.height !== undefined) {
+        const h = Number(formData.height);
+        if (isNaN(h) || h <= 100 || h >= 250) {
+          throw new Error('Height must be greater than 100 cm and less than 250 cm (101–249 cm).');
+        }
+      }
+
+      if (formData.weight !== '' && formData.weight !== null && formData.weight !== undefined) {
+        const w = Number(formData.weight);
+        if (isNaN(w) || w <= 20 || w >= 200) {
+          throw new Error('Weight must be greater than 20 kg and less than 200 kg (21–199 kg).');
+        }
       }
 
       const payload = {
@@ -144,10 +161,11 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
         <form onSubmit={handleSubmit} className="modal-ratings-form">
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '14px' }}>
             <div className="rating-input-field">
-              <label className="rating-field-label">Full Name *</label>
+              <label className="rating-field-label">Full Name * (max 100 chars)</label>
               <input
                 type="text"
                 required
+                maxLength={100}
                 placeholder="e.g. Marcus Vance"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -251,10 +269,12 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginTop: '12px' }}>
             <div className="rating-input-field">
-              <label className="rating-field-label">Height (cm)</label>
+              <label className="rating-field-label">Height (cm) (&gt;100 &amp; &lt;250)</label>
               <input
                 type="number"
-                placeholder="180"
+                min="101"
+                max="249"
+                placeholder="101–249 cm"
                 value={formData.height}
                 onChange={(e) => setFormData({ ...formData, height: e.target.value })}
                 style={{
@@ -269,10 +289,12 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
             </div>
 
             <div className="rating-input-field">
-              <label className="rating-field-label">Weight (kg)</label>
+              <label className="rating-field-label">Weight (kg) (&gt;20 &amp; &lt;200)</label>
               <input
                 type="number"
-                placeholder="75"
+                min="21"
+                max="199"
+                placeholder="21–199 kg"
                 value={formData.weight}
                 onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                 style={{

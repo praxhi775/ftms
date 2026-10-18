@@ -68,15 +68,26 @@ export default function Matches() {
             </p>
           </div>
 
-          <button
-            type="button"
-            className="btn-import-backup"
-            onClick={() => setIsNewMatchOpen(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-          >
-            <Plus size={16} />
-            <span>New Match</span>
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              className="btn-dossier-action"
+              onClick={() => navigate('/teams')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: '#fff' }}
+            >
+              <Users size={15} />
+              <span>Team Builder</span>
+            </button>
+            <button
+              type="button"
+              className="btn-import-backup"
+              onClick={() => setIsNewMatchOpen(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+            >
+              <Plus size={16} />
+              <span>New Match</span>
+            </button>
+          </div>
         </div>
 
         {/* Tab Filters */}

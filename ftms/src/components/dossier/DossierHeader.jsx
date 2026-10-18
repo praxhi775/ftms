@@ -5,7 +5,7 @@ export default function DossierHeader({ onEditRatings, onExportSheet }) {
     <header className="dossier-header-bar">
       {/* Breadcrumb Context */}
       <nav className="dossier-breadcrumb" aria-label="Breadcrumb">
-        <span className="breadcrumb-root">SQUAD DOSSIER</span>
+        <span className="breadcrumb-root">Squad Roster</span>
         <span className="breadcrumb-separator">/</span>
         <span className="breadcrumb-sub">Forward Line</span>
         <span className="breadcrumb-separator">/</span>

@@ -116,6 +116,15 @@ export default function PlayerProfile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  useEffect(() => {
+    if (player?.name) {
+      document.title = `${player.name} (#${player.jerseyNumber || ''}) - Squad Roster | Team Manager`;
+    }
+    return () => {
+      document.title = 'Team Manager | Sunday Squad Notebook';
+    };
+  }, [player]);
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
@@ -229,11 +238,13 @@ export default function PlayerProfile() {
       {/* Breadcrumbs & Action Bar */}
       <header className="dossier-header-bar">
         <nav className="dossier-breadcrumb" aria-label="Breadcrumb">
-          <Link to="/players" className="breadcrumb-root" style={{ color: 'var(--forest-green)', textDecoration: 'none' }}>
-            SQUAD ROSTER
+          <Link to="/players" className="breadcrumb-root" style={{ color: 'var(--forest-green)', textDecoration: 'none', fontWeight: 600 }}>
+            Squad Roster
           </Link>
           <span className="breadcrumb-separator">/</span>
-          <span className="breadcrumb-sub">{player.position}</span>
+          <Link to={`/players?position=${player.position}`} className="breadcrumb-sub" style={{ textDecoration: 'none', color: 'inherit' }}>
+            {player.position}
+          </Link>
           <span className="breadcrumb-separator">/</span>
           <span className="breadcrumb-current">#{player.jerseyNumber} {player.name}</span>
         </nav>

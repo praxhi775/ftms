@@ -8,11 +8,12 @@ import Matches from './pages/Matches';
 import MatchDetails from './pages/MatchDetails';
 import Statistics from './pages/Statistics';
 import Backup from './pages/Backup';
+import TeamGenerator from './pages/TeamGenerator';
 import './App.css';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <div className="app-layout">
         {/* Persistent Desktop Sidebar */}
         <Sidebar />
@@ -29,6 +30,8 @@ export default function App() {
               <Route path="/players/:id" element={<PlayerProfile />} />
               <Route path="/matches" element={<Matches />} />
               <Route path="/matches/:id" element={<MatchDetails />} />
+              <Route path="/teams" element={<TeamGenerator />} />
+              <Route path="/team-generator" element={<TeamGenerator />} />
               <Route path="/stats" element={<Statistics />} />
               <Route path="/backup" element={<Backup />} />
               {/* Fallback to Dashboard */}
