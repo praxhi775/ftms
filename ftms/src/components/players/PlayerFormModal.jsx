@@ -269,12 +269,12 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginTop: '12px' }}>
             <div className="rating-input-field">
-              <label className="rating-field-label">Height (cm) (&gt;100 &amp; &lt;250)</label>
+              <label className="rating-field-label">Height (cm)</label>
               <input
                 type="number"
                 min="101"
                 max="249"
-                placeholder="101–249 cm"
+                placeholder="170 cm"
                 value={formData.height}
                 onChange={(e) => setFormData({ ...formData, height: e.target.value })}
                 style={{
@@ -289,12 +289,12 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
             </div>
 
             <div className="rating-input-field">
-              <label className="rating-field-label">Weight (kg) (&gt;20 &amp; &lt;200)</label>
+              <label className="rating-field-label">Weight (kg)</label>
               <input
                 type="number"
                 min="21"
                 max="199"
-                placeholder="21–199 kg"
+                placeholder="61 kg"
                 value={formData.weight}
                 onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                 style={{
