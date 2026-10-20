@@ -15,16 +15,18 @@ also manage uneven team distribution by handling odd number of players.
 ✅ask for the main category while creating a custom tag.
 ✅ work on keyboard nav.
 
-⭕ Squad Roaster table can show for useful information.
+✅ Squad Roaster table can show for useful information.
 
-⭕ Player <-> Squad Roast, "SQUAD ROSTER/FWD/#18 Alex Ward" the titles and breadcrumbs are not in sync.
+✅ Player <-> Squad Roast, "SQUAD ROSTER/FWD/#18 Alex Ward" the titles and breadcrumbs are not in sync.
 
-⭕ Remove the option of adding custom field in player profile.
+✅ Remove the option of adding custom field in player profile.
 
-⭕ I should be able to manually create a team, with option to add guest players (do add drag and drop support).
+✅ I should be able to manually create a team, with option to add guest players (do add drag and drop support).
 
-⭕ Height constraints : >100cm and <250cm
+✅ Height constraints : >100cm and <250cm
 
-⭕ Weight constraints : >20 kg and <200kg
+✅ Weight constraints : >20 kg and <200kg
 
-⭕ Name field can have upto 100 chars.
+✅ Name field can have upto 100 chars.
+
+⭕
