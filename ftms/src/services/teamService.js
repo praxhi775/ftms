@@ -1,8 +1,9 @@
 /**
  * Randomly distribute players into N teams as evenly as possible.
- * Returns array of team objects: [{ name: 'Team 1', playerIds: [...] }, ...]
+ * Preserves existing team names and colors if provided.
+ * Returns array of team objects: [{ name: 'Team 1', color: '#...', playerIds: [...] }, ...]
  */
-export function generateTeams(playerIds, numberOfTeams = 2) {
+export function generateTeams(playerIds, numberOfTeams = 2, existingTeams = []) {
   if (!playerIds.length || numberOfTeams < 1) return [];
 
   // Shuffle using Fisher-Yates
@@ -13,10 +14,16 @@ export function generateTeams(playerIds, numberOfTeams = 2) {
   }
 
   const teamNames = ['Team Green', 'Team White', 'Team Blue', 'Team Red', 'Team Gold', 'Team Purple'];
-  const teams = Array.from({ length: numberOfTeams }, (_, i) => ({
-    name: teamNames[i] || `Team ${i + 1}`,
-    playerIds: [],
-  }));
+  const teamColors = ['#003B1B', '#4B5563', '#1E40AF', '#DC2626', '#D97706', '#7E22CE'];
+  const teams = Array.from({ length: numberOfTeams }, (_, i) => {
+    const existing = existingTeams && existingTeams[i];
+    return {
+      ...(existing || {}),
+      name: existing?.name || teamNames[i] || `Team ${i + 1}`,
+      color: existing?.color || teamColors[i % teamColors.length],
+      playerIds: [],
+    };
+  });
 
   // Distribute players round-robin
   shuffled.forEach((playerId, index) => {

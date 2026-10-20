@@ -17,7 +17,9 @@ import {
   GripVertical,
   X,
   Sparkles,
-  RotateCcw
+  RotateCcw,
+  Edit2,
+  Lock
 } from 'lucide-react';
 import { matchService } from '../services/matchService';
 import { playerService } from '../services/playerService';
@@ -26,6 +28,7 @@ import { generateTeams, movePlayer, swapPlayers } from '../services/teamService'
 import MatchFormModal from '../components/matches/MatchFormModal';
 import RecordStatsModal from '../components/matches/RecordStatsModal';
 import GuestPlayerModal from '../components/matches/GuestPlayerModal';
+import TeamFormModal from '../components/matches/TeamFormModal';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 
 const PRESET_TEAM_COLORS = [
@@ -63,8 +66,8 @@ export default function MatchDetails() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isRecordStatsOpen, setIsRecordStatsOpen] = useState(false);
   const [isAddGuestOpen, setIsAddGuestOpen] = useState(false);
-  const [isNewTeamModalOpen, setIsNewTeamModalOpen] = useState(false);
-  const [newTeamNameInput, setNewTeamNameInput] = useState('');
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [editingTeamIdx, setEditingTeamIdx] = useState(null);
   const [statDefs, setStatDefs] = useState([]);
   const [existingStats, setExistingStats] = useState([]);
 
@@ -149,8 +152,14 @@ export default function MatchDetails() {
   const unassignedGuests = guestPlayers.filter((g) => !assignedPlayerIds.has(g.id));
   const unassignedAll = [...unassignedSquad, ...unassignedGuests];
 
+  const isCompleted = match?.status === 'completed';
+
   // --- Drag and Drop Handlers ---
   const handleDragStart = (e, playerId, fromTeamIdx) => {
+    if (isCompleted) {
+      e.preventDefault();
+      return;
+    }
     setDraggingPlayer({ playerId, fromTeamIdx });
     e.dataTransfer.setData('text/plain', JSON.stringify({ playerId, fromTeamIdx }));
     e.dataTransfer.effectAllowed = 'move';
@@ -162,6 +171,7 @@ export default function MatchDetails() {
   };
 
   const handleDragOver = (e, targetTeamIdx) => {
+    if (isCompleted) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     if (dragOverTarget !== targetTeamIdx) {
@@ -176,6 +186,10 @@ export default function MatchDetails() {
   };
 
   const handleDrop = async (e, targetTeamIdx) => {
+    if (isCompleted) {
+      showToast('Cannot modify team lineups for a completed match.');
+      return;
+    }
     e.preventDefault();
     setDragOverTarget(null);
 
@@ -218,24 +232,37 @@ export default function MatchDetails() {
   };
 
   // --- Manual Team Management ---
-  const handleCreateTeamSubmit = async (e) => {
-    e.preventDefault();
-    const name = newTeamNameInput.trim() || `Team ${String.fromCharCode(65 + teams.length)}`;
-    const newTeam = {
-      name,
-      playerIds: [],
-    };
-    const updated = [...teams, newTeam];
+  const handleSaveTeam = async ({ name, color }) => {
+    if (isCompleted) {
+      showToast('Cannot modify teams for a completed match.');
+      return;
+    }
+    let updated;
+    if (editingTeamIdx !== null) {
+      updated = teams.map((t, idx) => idx === editingTeamIdx ? { ...t, name, color } : t);
+      showToast(`"${name}" updated.`);
+    } else {
+      const newTeam = {
+        name,
+        color,
+        playerIds: [],
+      };
+      updated = [...teams, newTeam];
+      showToast(`"${name}" created. Drag players into this team!`);
+    }
     setTeams(updated);
     setNumTeams(updated.length);
-    setNewTeamNameInput('');
-    setIsNewTeamModalOpen(false);
+    setEditingTeamIdx(null);
+    setIsTeamModalOpen(false);
 
     await matchService.saveTeams(match.id, updated, guestPlayers);
-    showToast(`"${name}" created. Drag players into this team!`);
   };
 
   const handleDeleteTeam = async (teamIdx) => {
+    if (isCompleted) {
+      showToast('Cannot delete teams for a completed match.');
+      return;
+    }
     const teamToDelete = teams[teamIdx];
     const updated = teams.filter((_, idx) => idx !== teamIdx);
     setTeams(updated);
@@ -246,6 +273,10 @@ export default function MatchDetails() {
   };
 
   const handleClearTeams = async () => {
+    if (isCompleted) {
+      showToast('Cannot reset lineups for a completed match.');
+      return;
+    }
     setTeams([]);
     setSelectedPlayerToSwap(null);
     await matchService.saveTeams(match.id, [], guestPlayers);
@@ -254,13 +285,17 @@ export default function MatchDetails() {
 
   // Auto-generate teams
   const handleAutoGenerateTeams = async () => {
+    if (isCompleted) {
+      showToast('Cannot reallocate players for a completed match.');
+      return;
+    }
     const allAvailableIds = [...squadPlayers.map((p) => p.id), ...guestPlayers.map((g) => g.id)];
     if (allAvailableIds.length === 0) {
       showToast('No players or guests available for this match.');
       return;
     }
 
-    const generated = generateTeams(allAvailableIds, numTeams);
+    const generated = generateTeams(allAvailableIds, numTeams, teams);
     setTeams(generated);
     setSelectedPlayerToSwap(null);
 
@@ -271,6 +306,10 @@ export default function MatchDetails() {
 
   // Guest Player Add / Remove
   const handleAddGuestPlayer = async (guestData) => {
+    if (isCompleted) {
+      showToast('Cannot add guest players to a completed match.');
+      return;
+    }
     const newGuest = {
       id: `guest-${Date.now()}`,
       name: guestData.name,
@@ -295,6 +334,10 @@ export default function MatchDetails() {
   };
 
   const handleRemoveGuestPlayer = async (guestId) => {
+    if (isCompleted) {
+      showToast('Cannot remove guest players from a completed match.');
+      return;
+    }
     const guest = guestPlayers.find((g) => g.id === guestId);
     const updatedGuests = guestPlayers.filter((g) => g.id !== guestId);
     setGuestPlayers(updatedGuests);
@@ -311,6 +354,7 @@ export default function MatchDetails() {
 
   // Click-to-swap fallback for accessibility
   const handlePlayerClick = async (playerId, teamIndex) => {
+    if (isCompleted) return;
     if (!selectedPlayerToSwap) {
       setSelectedPlayerToSwap({ playerId, teamIndex });
       showToast('Player selected. Click another player to SWAP or an arrow to MOVE.');
@@ -347,6 +391,7 @@ export default function MatchDetails() {
   };
 
   const handleMovePlayerToTeam = async (playerId, fromTeamIdx, toTeamIdx) => {
+    if (isCompleted) return;
     let newTeams = teams.map((t) => ({ ...t, playerIds: [...t.playerIds] }));
     if (fromTeamIdx >= 0) {
       newTeams[fromTeamIdx].playerIds = newTeams[fromTeamIdx].playerIds.filter((pid) => pid !== playerId);
@@ -379,6 +424,11 @@ export default function MatchDetails() {
   };
 
   const handleDeleteMatch = async () => {
+    if (isCompleted) {
+      showToast('Completed matches cannot be deleted.');
+      setIsDeleteModalOpen(false);
+      return;
+    }
     try {
       await matchService.remove(match.id);
       navigate('/matches');
@@ -449,24 +499,28 @@ export default function MatchDetails() {
             </button>
           )}
 
-          <button
-            type="button"
-            className="btn-dossier-action btn-export-sheet"
-            onClick={() => setIsEditModalOpen(true)}
-          >
-            <Edit3 size={15} />
-            <span>Edit Match</span>
-          </button>
+          {!isCompleted && (
+            <button
+              type="button"
+              className="btn-dossier-action btn-export-sheet"
+              onClick={() => setIsEditModalOpen(true)}
+            >
+              <Edit3 size={15} />
+              <span>Edit Match</span>
+            </button>
+          )}
 
-          <button
-            type="button"
-            className="btn-dossier-action"
-            onClick={() => setIsDeleteModalOpen(true)}
-            style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
-          >
-            <Trash2 size={15} />
-            <span>Delete</span>
-          </button>
+          {!isCompleted && (
+            <button
+              type="button"
+              className="btn-dossier-action"
+              onClick={() => setIsDeleteModalOpen(true)}
+              style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+            >
+              <Trash2 size={15} />
+              <span>Delete</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -545,146 +599,175 @@ export default function MatchDetails() {
               </h2>
             </div>
             <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              Create teams manually or auto-generate, add guest trialists, and drag &amp; drop players to assemble lineups.
+              {isCompleted
+                ? 'Official final lineups recorded for this match. Player allocation and rosters are locked.'
+                : 'Create teams manually or auto-generate, add guest trialists, and drag & drop players to assemble lineups.'}
             </p>
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
-            {/* Add Team Manually */}
-            <button
-              type="button"
-              className="btn-import-backup"
-              onClick={() => setIsNewTeamModalOpen(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 12px', fontSize: '12.5px' }}
-            >
-              <Plus size={14} />
-              <span>+ Add Team</span>
-            </button>
+            {isCompleted ? (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                backgroundColor: '#FEF3C7',
+                border: '1px solid #FCD34D',
+                borderRadius: '8px',
+                color: '#92400E',
+                fontSize: '12px',
+                fontWeight: 600
+              }}>
+                <Lock size={13} />
+                <span>Lineups Locked (Match Completed)</span>
+              </div>
+            ) : (
+              <>
+                {/* Add Team Manually */}
+                <button
+                  type="button"
+                  className="btn-import-backup"
+                  onClick={() => {
+                    setEditingTeamIdx(null);
+                    setIsTeamModalOpen(true);
+                  }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 12px', fontSize: '12.5px' }}
+                >
+                  <Plus size={14} />
+                  <span>Add Team</span>
+                </button>
 
-            {/* Add Guest Player */}
-            <button
-              type="button"
-              className="btn-dossier-action"
-              onClick={() => setIsAddGuestOpen(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 12px', fontSize: '12.5px', borderColor: 'var(--border-strong)' }}
-            >
-              <UserPlus size={14} />
-              <span>+ Add Guest Player</span>
-            </button>
+                {/* Add Guest Player */}
+                <button
+                  type="button"
+                  className="btn-dossier-action"
+                  onClick={() => setIsAddGuestOpen(true)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 12px', fontSize: '12.5px', borderColor: 'var(--border-strong)' }}
+                >
+                  <UserPlus size={14} />
+                  <span>Add Guest Player</span>
+                </button>
 
-            {/* Auto Generate Controls */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'var(--bg-subtle)', padding: '3px 8px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
-              <select
-                value={numTeams}
-                onChange={(e) => setNumTeams(Number(e.target.value))}
-                style={{
-                  padding: '4px 6px',
-                  borderRadius: '4px',
-                  border: '1px solid var(--border-subtle)',
-                  backgroundColor: '#fff',
-                  fontSize: '12px',
-                  fontFamily: 'inherit',
-                  cursor: 'pointer'
-                }}
-              >
-                <option value={2}>2 Teams</option>
-                <option value={3}>3 Teams</option>
-                <option value={4}>4 Teams</option>
-              </select>
+                {/* Auto Generate Controls */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'var(--bg-subtle)', padding: '3px 8px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                  <select
+                    value={numTeams}
+                    onChange={(e) => setNumTeams(Number(e.target.value))}
+                    style={{
+                      padding: '4px 6px',
+                      borderRadius: '4px',
+                      border: '1px solid var(--border-subtle)',
+                      backgroundColor: '#fff',
+                      fontSize: '12px',
+                      fontFamily: 'inherit',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {Array.from({ length: Math.max(4, numTeams, teams.length) - 1 }, (_, i) => i + 2).map((count) => (
+                      <option key={count} value={count}>
+                        {count} Teams
+                      </option>
+                    ))}
+                  </select>
 
-              <button
-                type="button"
-                onClick={handleAutoGenerateTeams}
-                title="Auto-Distribute Available Squad Evenly"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  backgroundColor: 'var(--forest-green)',
-                  color: '#fff',
-                  fontSize: '11.5px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                <Shuffle size={12} />
-                <span>Auto-Distribute</span>
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    onClick={handleAutoGenerateTeams}
+                    title="Auto-Distribute Available Squad Evenly"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      backgroundColor: 'var(--forest-green)',
+                      color: '#fff',
+                      fontSize: '11.5px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Shuffle size={12} />
+                    <span>Auto-Distribute</span>
+                  </button>
+                </div>
 
-            {teams.length > 0 && (
-              <button
-                type="button"
-                onClick={handleClearTeams}
-                title="Clear All Teams and return players to unassigned bench"
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: '6px',
-                  border: '1px solid #FECACA',
-                  backgroundColor: '#FFF5F5',
-                  color: '#DC2626',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <RotateCcw size={12} />
-                <span>Reset</span>
-              </button>
+                {teams.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearTeams}
+                    title="Clear All Teams and return players to unassigned bench"
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #FECACA',
+                      backgroundColor: '#FFF5F5',
+                      color: '#DC2626',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <RotateCcw size={12} />
+                    <span>Reset</span>
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
 
         {/* Tip Banner */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '8px 14px',
-          backgroundColor: '#FAF8F3',
-          border: '1px solid #ECE7DD',
-          borderRadius: '8px',
-          fontSize: '12px',
-          color: 'var(--text-secondary)',
-          marginBottom: '16px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <GripVertical size={14} style={{ color: 'var(--forest-green)' }} />
-            <span>
-              <strong>Drag &amp; Drop:</strong> Grab any player card by its handle to move between teams or drop onto the Unassigned Bench.
-            </span>
-          </div>
-          {selectedPlayerToSwap && (
+        {!isCompleted && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px 14px',
+            backgroundColor: '#FAF8F3',
+            border: '1px solid #ECE7DD',
+            borderRadius: '8px',
+            fontSize: '12px',
+            color: 'var(--text-secondary)',
+            marginBottom: '16px'
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ color: '#1E40AF', fontWeight: 600 }}>
-                Selected: {allPlayerMap[selectedPlayerToSwap.playerId]?.name}
+              <GripVertical size={14} style={{ color: 'var(--forest-green)' }} />
+              <span>
+                <strong>Drag &amp; Drop:</strong> Grab any player card by its handle to move between teams or drop onto the Unassigned Bench.
               </span>
-              <button
-                type="button"
-                onClick={() => setSelectedPlayerToSwap(null)}
-                style={{ fontSize: '11px', textDecoration: 'underline', color: '#1E40AF', cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
             </div>
-          )}
-        </div>
+            {selectedPlayerToSwap && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: '#1E40AF', fontWeight: 600 }}>
+                  Selected: {allPlayerMap[selectedPlayerToSwap.playerId]?.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPlayerToSwap(null)}
+                  style={{ fontSize: '11px', textDecoration: 'underline', color: '#1E40AF', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* UNASSIGNED SQUAD / BENCH POOL (Drop Target) */}
         <div
-          onDragOver={(e) => handleDragOver(e, -1)}
-          onDragLeave={(e) => handleDragLeave(e, -1)}
-          onDrop={(e) => handleDrop(e, -1)}
+          onDragOver={isCompleted ? undefined : (e) => handleDragOver(e, -1)}
+          onDragLeave={isCompleted ? undefined : (e) => handleDragLeave(e, -1)}
+          onDrop={isCompleted ? undefined : (e) => handleDrop(e, -1)}
           style={{
             padding: '14px 16px',
             borderRadius: '12px',
-            backgroundColor: dragOverTarget === -1 ? '#ECFDF5' : '#F9FAFB',
-            border: dragOverTarget === -1 ? '2px dashed #059669' : '1px solid #E5E7EB',
+            backgroundColor: !isCompleted && dragOverTarget === -1 ? '#ECFDF5' : '#F9FAFB',
+            border: !isCompleted && dragOverTarget === -1 ? '2px dashed #059669' : '1px solid #E5E7EB',
             transition: 'all 0.15s ease',
             marginBottom: '20px'
           }}
@@ -699,9 +782,11 @@ export default function MatchDetails() {
                 {unassignedAll.length} available
               </span>
             </div>
-            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-              Drop here to unassign from teams
-            </span>
+            {!isCompleted && (
+              <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                Drop here to unassign from teams
+              </span>
+            )}
           </div>
 
           {unassignedAll.length === 0 ? (
@@ -711,16 +796,16 @@ export default function MatchDetails() {
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {unassignedAll.map((player) => {
-                const isSelected = selectedPlayerToSwap?.playerId === player.id;
-                const isDragging = draggingPlayer?.playerId === player.id;
+                const isSelected = !isCompleted && selectedPlayerToSwap?.playerId === player.id;
+                const isDragging = !isCompleted && draggingPlayer?.playerId === player.id;
 
                 return (
                   <div
                     key={player.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, player.id, -1)}
-                    onDragEnd={handleDragEnd}
-                    onClick={() => handlePlayerClick(player.id, -1)}
+                    draggable={!isCompleted}
+                    onDragStart={isCompleted ? undefined : (e) => handleDragStart(e, player.id, -1)}
+                    onDragEnd={isCompleted ? undefined : handleDragEnd}
+                    onClick={isCompleted ? undefined : () => handlePlayerClick(player.id, -1)}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -730,13 +815,13 @@ export default function MatchDetails() {
                       backgroundColor: isSelected ? '#EFF6FF' : '#fff',
                       border: isSelected ? '1px solid #3B82F6' : '1px solid var(--border-subtle)',
                       boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-                      cursor: 'grab',
+                      cursor: isCompleted ? 'default' : 'grab',
                       opacity: isDragging ? 0.4 : 1,
                       userSelect: 'none',
                       transition: 'transform 0.1s ease',
                     }}
                   >
-                    <GripVertical size={13} style={{ color: '#9CA3AF' }} />
+                    {!isCompleted && <GripVertical size={13} style={{ color: '#9CA3AF' }} />}
                     <span style={{
                       width: '20px',
                       height: '20px',
@@ -778,7 +863,7 @@ export default function MatchDetails() {
                       </span>
                     )}
 
-                    {player.isGuest && (
+                    {!isCompleted && player.isGuest && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -786,7 +871,7 @@ export default function MatchDetails() {
                           handleRemoveGuestPlayer(player.id);
                         }}
                         title="Remove Guest"
-                        style={{ color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        style={{ color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', border: 'none', background: 'none' }}
                       >
                         <X size={12} />
                       </button>
@@ -818,10 +903,13 @@ export default function MatchDetails() {
               <button
                 type="button"
                 className="btn-import-backup"
-                onClick={() => setIsNewTeamModalOpen(true)}
+                onClick={() => {
+                  setEditingTeamIdx(null);
+                  setIsTeamModalOpen(true);
+                }}
               >
                 <Plus size={14} />
-                <span>+ Create First Team</span>
+                <span>Create First Team</span>
               </button>
               <button
                 type="button"
@@ -846,14 +934,14 @@ export default function MatchDetails() {
 
               return (
                 <div
-                  key={team.name || teamIdx}
-                  onDragOver={(e) => handleDragOver(e, teamIdx)}
-                  onDragLeave={(e) => handleDragLeave(e, teamIdx)}
-                  onDrop={(e) => handleDrop(e, teamIdx)}
+                  key={team.name ? `${team.name}-${teamIdx}` : teamIdx}
+                  onDragOver={isCompleted ? undefined : (e) => handleDragOver(e, teamIdx)}
+                  onDragLeave={isCompleted ? undefined : (e) => handleDragLeave(e, teamIdx)}
+                  onDrop={isCompleted ? undefined : (e) => handleDrop(e, teamIdx)}
                   style={{
-                    backgroundColor: isDragTarget ? '#ECFDF5' : '#fff',
+                    backgroundColor: !isCompleted && isDragTarget ? '#ECFDF5' : '#fff',
                     borderRadius: '16px',
-                    border: isDragTarget ? '2px dashed #059669' : '1px solid var(--border-subtle)',
+                    border: !isCompleted && isDragTarget ? '2px dashed #059669' : '1px solid var(--border-subtle)',
                     padding: '18px',
                     boxShadow: 'var(--shadow-card)',
                     display: 'flex',
@@ -870,15 +958,16 @@ export default function MatchDetails() {
                         width: '24px',
                         height: '24px',
                         borderRadius: '6px',
-                        backgroundColor: themeColor.bg,
+                        backgroundColor: team.color || themeColor.bg,
                         color: '#fff',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: '11px',
-                        fontWeight: 800
+                        fontWeight: 800,
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.15)'
                       }}>
-                        {String.fromCharCode(65 + teamIdx)}
+                        {team.name ? team.name.charAt(0).toUpperCase() : String.fromCharCode(65 + teamIdx)}
                       </span>
                       <div>
                         <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
@@ -890,25 +979,64 @@ export default function MatchDetails() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTeam(teamIdx)}
-                        title={`Delete ${team.name}`}
-                        style={{
-                          color: '#9CA3AF',
-                          padding: '4px',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#EF4444'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = '#9CA3AF'}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    {!isCompleted && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingTeamIdx(teamIdx);
+                            setIsTeamModalOpen(true);
+                          }}
+                          title={`Edit ${team.name} name & jersey color`}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#6B7280',
+                            padding: '5px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = 'var(--forest-green)';
+                            e.currentTarget.style.backgroundColor = 'var(--pale-green-bg)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = '#6B7280';
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <Edit2 size={14} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTeam(teamIdx)}
+                          title={`Delete ${team.name}`}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#9CA3AF',
+                            padding: '5px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = '#EF4444';
+                            e.currentTarget.style.backgroundColor = '#FEE2E2';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = '#9CA3AF';
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Drop zone helper if empty */}
@@ -921,21 +1049,21 @@ export default function MatchDetails() {
                       color: 'var(--text-muted)',
                       fontSize: '12px'
                     }}>
-                      Drop players here to assign to {team.name}
+                      {isCompleted ? `No players assigned to ${team.name}` : `Drop players here to assign to ${team.name}`}
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {teamPlayerList.map((player) => {
-                        const isSelected = selectedPlayerToSwap?.playerId === player.id;
-                        const isDragging = draggingPlayer?.playerId === player.id;
+                        const isSelected = !isCompleted && selectedPlayerToSwap?.playerId === player.id;
+                        const isDragging = !isCompleted && draggingPlayer?.playerId === player.id;
 
                         return (
                           <div
                             key={player.id}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, player.id, teamIdx)}
-                            onDragEnd={handleDragEnd}
-                            onClick={() => handlePlayerClick(player.id, teamIdx)}
+                            draggable={!isCompleted}
+                            onDragStart={isCompleted ? undefined : (e) => handleDragStart(e, player.id, teamIdx)}
+                            onDragEnd={isCompleted ? undefined : handleDragEnd}
+                            onClick={isCompleted ? undefined : () => handlePlayerClick(player.id, teamIdx)}
                             style={{
                               display: 'flex',
                               alignItems: 'center',
@@ -944,14 +1072,14 @@ export default function MatchDetails() {
                               borderRadius: '8px',
                               backgroundColor: isSelected ? '#EFF6FF' : 'var(--bg-subtle)',
                               border: isSelected ? '1px solid #3B82F6' : '1px solid transparent',
-                              cursor: 'grab',
+                              cursor: isCompleted ? 'default' : 'grab',
                               opacity: isDragging ? 0.35 : 1,
                               userSelect: 'none',
                               transition: 'all 0.12s ease',
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <GripVertical size={13} style={{ color: '#9CA3AF' }} />
+                              {!isCompleted && <GripVertical size={13} style={{ color: '#9CA3AF' }} />}
                               <span style={{
                                 width: '22px',
                                 height: '22px',
@@ -990,7 +1118,7 @@ export default function MatchDetails() {
                               </div>
                             </div>
 
-                            {player.isGuest && (
+                            {!isCompleted && player.isGuest && (
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -998,7 +1126,7 @@ export default function MatchDetails() {
                                   handleRemoveGuestPlayer(player.id);
                                 }}
                                 title="Remove Guest"
-                                style={{ color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: 'auto' }}
+                                style={{ color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: 'auto', border: 'none', background: 'none' }}
                               >
                                 <X size={13} />
                               </button>
@@ -1015,44 +1143,17 @@ export default function MatchDetails() {
         )}
       </section>
 
-      {/* Manual Team Creation Modal */}
-      {isNewTeamModalOpen && (
-        <div className="modal-overlay-backdrop" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) setIsNewTeamModalOpen(false); }}>
-          <div className="modal-content-card" style={{ maxWidth: '400px' }}>
-            <div className="modal-header-row">
-              <h2 className="modal-heading">Create New Team</h2>
-              <button type="button" className="btn-modal-close" onClick={() => setIsNewTeamModalOpen(false)}>
-                <X size={18} />
-              </button>
-            </div>
-            <p className="modal-description">Add a new squad lineup for this match fixture.</p>
-
-            <form onSubmit={handleCreateTeamSubmit}>
-              <div className="rating-input-field" style={{ margin: '14px 0' }}>
-                <label className="rating-field-label">Team Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder={`e.g. Team ${String.fromCharCode(65 + teams.length)}`}
-                  value={newTeamNameInput}
-                  onChange={(e) => setNewTeamNameInput(e.target.value)}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border-strong)', fontSize: '14px' }}
-                />
-              </div>
-
-              <div className="modal-actions-footer">
-                <button type="button" className="btn-modal-cancel" onClick={() => setIsNewTeamModalOpen(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-modal-submit">
-                  <CheckCircle size={15} />
-                  <span>Create Team</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Team Create/Edit Modal */}
+      <TeamFormModal
+        isOpen={isTeamModalOpen}
+        onClose={() => {
+          setIsTeamModalOpen(false);
+          setEditingTeamIdx(null);
+        }}
+        onSave={handleSaveTeam}
+        teamToEdit={editingTeamIdx !== null ? teams[editingTeamIdx] : null}
+        teamIndex={editingTeamIdx !== null ? editingTeamIdx : teams.length}
+      />
 
       {/* Add Guest Player Modal */}
       <GuestPlayerModal
@@ -1063,15 +1164,17 @@ export default function MatchDetails() {
       />
 
       {/* Edit Match Modal */}
-      <MatchFormModal
-        isOpen={isEditModalOpen}
-        matchToEdit={match}
-        onClose={() => setIsEditModalOpen(false)}
-        onMatchSaved={() => {
-          loadMatchData();
-          showToast('Match fixture details updated.');
-        }}
-      />
+      {!isCompleted && (
+        <MatchFormModal
+          isOpen={isEditModalOpen}
+          matchToEdit={match}
+          onClose={() => setIsEditModalOpen(false)}
+          onMatchSaved={() => {
+            loadMatchData();
+            showToast('Match fixture details updated.');
+          }}
+        />
+      )}
 
       {/* Complete Match Modal (Score entry) */}
       {isScoreModalOpen && (

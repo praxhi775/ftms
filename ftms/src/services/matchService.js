@@ -7,7 +7,9 @@ export const matchService = {
   },
 
   async getById(id) {
-    return db.matches.get(id);
+    const numId = Number(id);
+    const targetId = isNaN(numId) ? id : numId;
+    return db.matches.get(targetId);
   },
 
   async getUpcoming() {
@@ -36,21 +38,30 @@ export const matchService = {
       time: match.time || '',
       venue: match.venue?.trim() || '',
       matchType: match.matchType || 'Friendly',
-      status: 'upcoming',
+      status: match.status || 'upcoming',
       selectedPlayerIds: match.selectedPlayerIds || [],
       teams: match.teams || [],
-      score: null,
+      guestPlayers: match.guestPlayers || [],
+      score: match.score || null,
       notes: match.notes?.trim() || '',
       createdAt: new Date().toISOString(),
     });
   },
 
   async update(id, updates) {
-    return db.matches.update(id, updates);
+    const numId = Number(id);
+    const targetId = isNaN(numId) ? id : numId;
+    const match = await db.matches.get(targetId);
+    if (match && match.status === 'completed') {
+      throw new Error('Completed matches cannot be edited.');
+    }
+    return db.matches.update(targetId, updates);
   },
 
   async completeMatch(id, score, notes) {
-    return db.matches.update(id, {
+    const numId = Number(id);
+    const targetId = isNaN(numId) ? id : numId;
+    return db.matches.update(targetId, {
       status: 'completed',
       score,
       notes: notes || '',
@@ -58,17 +69,29 @@ export const matchService = {
   },
 
   async saveTeams(id, teams, guestPlayers) {
+    const numId = Number(id);
+    const targetId = isNaN(numId) ? id : numId;
+    const match = await db.matches.get(targetId);
+    if (match && match.status === 'completed') {
+      throw new Error('Cannot reallocate players or modify lineups for a completed match.');
+    }
     const updateObj = { teams };
     if (guestPlayers !== undefined) {
       updateObj.guestPlayers = guestPlayers;
     }
-    return db.matches.update(id, updateObj);
+    return db.matches.update(targetId, updateObj);
   },
 
   async remove(id) {
+    const numId = Number(id);
+    const targetId = isNaN(numId) ? id : numId;
+    const match = await db.matches.get(targetId);
+    if (match && match.status === 'completed') {
+      throw new Error('Completed matches cannot be deleted.');
+    }
     return db.transaction('rw', [db.matches, db.playerStats], async () => {
-      await db.playerStats.where('matchId').equals(id).delete();
-      await db.matches.delete(id);
+      await db.playerStats.where('matchId').equals(targetId).delete();
+      await db.matches.delete(targetId);
     });
   },
 

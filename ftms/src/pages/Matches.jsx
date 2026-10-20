@@ -8,10 +8,12 @@ import {
   Users, 
   Plus, 
   ChevronRight, 
-  CheckCircle2 
+  CheckCircle2,
+  Trash2 
 } from 'lucide-react';
 import { matchService } from '../services/matchService';
 import MatchFormModal from '../components/matches/MatchFormModal';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 
 export default function Matches() {
   const navigate = useNavigate();
@@ -20,6 +22,8 @@ export default function Matches() {
   const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming' | 'completed'
   const [loading, setLoading] = useState(true);
   const [isNewMatchOpen, setIsNewMatchOpen] = useState(false);
+  const [matchToDelete, setMatchToDelete] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
   const loadMatches = async () => {
@@ -47,6 +51,27 @@ export default function Matches() {
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!matchToDelete) return;
+    if (matchToDelete.status === 'completed') {
+      showToast('Completed matches cannot be deleted.');
+      setIsDeleteModalOpen(false);
+      setMatchToDelete(null);
+      return;
+    }
+    try {
+      await matchService.remove(matchToDelete.id);
+      showToast(`Match "${matchToDelete.title}" deleted.`);
+      loadMatches();
+    } catch (err) {
+      console.error('Failed to delete match:', err);
+      showToast(err.message || 'Failed to delete match');
+    } finally {
+      setIsDeleteModalOpen(false);
+      setMatchToDelete(null);
+    }
   };
 
   return (
@@ -194,12 +219,48 @@ export default function Matches() {
                 >
                   {/* Top Bar */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className={`badge ${match.status === 'completed' ? 'badge-green' : 'badge-peach'}`}>
-                      {match.status === 'completed' ? 'Completed' : 'Upcoming'}
-                    </span>
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                      {match.matchType || 'Friendly'}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className={`badge ${match.status === 'completed' ? 'badge-green' : 'badge-peach'}`}>
+                        {match.status === 'completed' ? 'Completed' : 'Upcoming'}
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                        {match.matchType || 'Friendly'}
+                      </span>
+                    </div>
+
+                    {match.status !== 'completed' && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMatchToDelete(match);
+                          setIsDeleteModalOpen(true);
+                        }}
+                        title={`Delete ${match.title}`}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#9CA3AF',
+                          cursor: 'pointer',
+                          padding: '5px',
+                          borderRadius: '6px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#DC2626';
+                          e.currentTarget.style.backgroundColor = '#FEE2E2';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = '#9CA3AF';
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
                   </div>
 
                   {/* Title & Opponent */}
@@ -281,6 +342,20 @@ export default function Matches() {
           loadMatches();
           showToast('Match fixture scheduled.');
         }}
+      />
+
+      {/* Delete Match Confirmation */}
+      <ConfirmDialog
+        isOpen={isDeleteModalOpen}
+        title={matchToDelete?.status === 'completed' ? 'Delete Completed Match' : 'Delete Match Fixture'}
+        message={`Are you sure you want to delete "${matchToDelete?.title}"? All associated match scores, player stats, and squad lineups will be permanently deleted.`}
+        confirmLabel="Delete Match"
+        confirmVariant="danger"
+        onCancel={() => {
+          setIsDeleteModalOpen(false);
+          setMatchToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );
