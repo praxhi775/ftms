@@ -325,9 +325,8 @@ export default function TeamGenerator() {
               Handcraft teams with custom lineups and jersey colors, add guest players, and save directly into matches.
             </p>
           </div>
-
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
+        
+          <div style={{ display: 'flex', flexDirection: 'row', gap: '8px', flexWrap: 'nowrap',whiteSpace: 'nowrap', flexShrink: 0,marginTop:'3px', alignItems: 'center' }}>            <button
               type="button"
               className="btn-import-backup"
               onClick={() => {
@@ -343,14 +342,14 @@ export default function TeamGenerator() {
               type="button"
               className="btn-dossier-action"
               onClick={() => setIsAddGuestOpen(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px',whiteSpace: 'nowrap', marginTop: '3px'  }}
             >
               <UserPlus size={15} />
               <span>Add Guest Player</span>
             </button>
           </div>
         </div>
-
+      
         {/* Quick controls */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', borderTop: '1px solid var(--border-subtle)', paddingTop: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

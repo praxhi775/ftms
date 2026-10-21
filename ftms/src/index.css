@@ -93,3 +93,16 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-primary);
   letter-spacing: -0.02em;
 }
+
+.hero-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .hero-actions {
+    flex-wrap: wrap;
+  }
+}
