@@ -22,7 +22,7 @@ export const playerService = {
       results = results.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
-          String(p.jerseyNumber).includes(q)
+          (p.jerseyNumber != null && String(p.jerseyNumber).includes(q))
       );
     }
 
@@ -54,7 +54,6 @@ export const playerService = {
     // Validate required fields
     if (!player.name?.trim()) throw new Error('Player name is required.');
     if (player.name.trim().length > 100) throw new Error('Player name cannot exceed 100 characters.');
-    if (player.jerseyNumber == null || player.jerseyNumber === '') throw new Error('Jersey number is required.');
     if (!player.position) throw new Error('Position is required.');
 
     // Validate physical constraints
@@ -72,20 +71,14 @@ export const playerService = {
       }
     }
 
-    // Check duplicate jersey number among active players
-    const existing = await db.players
-      .where('jerseyNumber')
-      .equals(Number(player.jerseyNumber))
-      .toArray();
-    const conflict = existing.find((p) => p.status === 'active' || p.status === 'injured');
-    if (conflict) {
-      throw new Error(`Jersey number ${player.jerseyNumber} is already used by ${conflict.name}.`);
-    }
+    const jerseyNumber = (player.jerseyNumber !== '' && player.jerseyNumber != null && !isNaN(Number(player.jerseyNumber)))
+      ? Number(player.jerseyNumber)
+      : (player.jerseyNumber != null && player.jerseyNumber !== '' ? player.jerseyNumber : null);
 
     return db.players.add({
       ...player,
       name: player.name.trim(),
-      jerseyNumber: Number(player.jerseyNumber),
+      jerseyNumber,
       age: player.age ? Number(player.age) : null,
       height: player.height ? Number(player.height) : null,
       weight: player.weight ? Number(player.weight) : null,
@@ -115,24 +108,16 @@ export const playerService = {
       }
     }
 
-    // Check duplicate jersey if jersey changed
-    if (updates.jerseyNumber != null) {
-      const existing = await db.players
-        .where('jerseyNumber')
-        .equals(Number(updates.jerseyNumber))
-        .toArray();
-      const conflict = existing.find(
-        (p) => p.id !== id && (p.status === 'active' || p.status === 'injured')
-      );
-      if (conflict) {
-        throw new Error(`Jersey number ${updates.jerseyNumber} is already used by ${conflict.name}.`);
-      }
-    }
+    const jerseyNumber = updates.jerseyNumber !== undefined
+      ? (updates.jerseyNumber !== '' && updates.jerseyNumber != null && !isNaN(Number(updates.jerseyNumber))
+          ? Number(updates.jerseyNumber)
+          : (updates.jerseyNumber !== '' && updates.jerseyNumber != null ? updates.jerseyNumber : null))
+      : undefined;
 
     return db.players.update(id, {
       ...updates,
       name: updates.name != null ? updates.name.trim() : undefined,
-      jerseyNumber: updates.jerseyNumber != null ? Number(updates.jerseyNumber) : undefined,
+      jerseyNumber,
       age: updates.age != null ? Number(updates.age) : undefined,
       height: updates.height != null ? Number(updates.height) : undefined,
       weight: updates.weight != null ? Number(updates.weight) : undefined,

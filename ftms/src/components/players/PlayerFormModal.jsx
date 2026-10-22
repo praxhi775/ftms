@@ -4,7 +4,7 @@ import { playerService } from '../../services/playerService';
 import { useModalFocusTrap } from '../../utils/useModalFocusTrap';
 
 export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, playerToEdit }) {
-  const modalRef = useModalFocusTrap({ isOpen, onClose, initialFocusSelector: 'input[name="name"], input[placeholder*="Full Name"], #player-name-input' });
+  const modalRef = useModalFocusTrap({ isOpen, onClose, initialFocusSelector: '#player-name-input' });
   const [formData, setFormData] = useState({
     name: '',
     jerseyNumber: '',
@@ -62,27 +62,26 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
       if (formData.name.trim().length > 100) {
         throw new Error('Player name cannot exceed 100 characters.');
       }
-      if (formData.jerseyNumber === '' || isNaN(Number(formData.jerseyNumber))) {
-        throw new Error('A valid jersey number is required.');
-      }
 
       if (formData.height !== '' && formData.height !== null && formData.height !== undefined) {
         const h = Number(formData.height);
         if (isNaN(h) || h <= 100 || h >= 250) {
-          throw new Error('Height must be greater than 100 cm and less than 250 cm (101–249 cm).');
+          throw new Error('Height must be greater than 100 cm and less than 250 cm (101â€“249 cm).');
         }
       }
 
       if (formData.weight !== '' && formData.weight !== null && formData.weight !== undefined) {
         const w = Number(formData.weight);
         if (isNaN(w) || w <= 20 || w >= 200) {
-          throw new Error('Weight must be greater than 20 kg and less than 200 kg (21–199 kg).');
+          throw new Error('Weight must be greater than 20 kg and less than 200 kg (21â€“199 kg).');
         }
       }
 
       const payload = {
         name: formData.name.trim(),
-        jerseyNumber: Number(formData.jerseyNumber),
+        jerseyNumber: (formData.jerseyNumber !== '' && formData.jerseyNumber != null && !isNaN(Number(formData.jerseyNumber)))
+          ? Number(formData.jerseyNumber)
+          : (formData.jerseyNumber !== '' && formData.jerseyNumber != null ? formData.jerseyNumber : null),
         age: formData.age ? Number(formData.age) : null,
         position: formData.position,
         preferredFoot: formData.preferredFoot,
@@ -137,7 +136,7 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
         <p className="modal-description">
           {playerToEdit
             ? 'Update squad member roster credentials and physical details.'
-            : 'Add a new member to your team roster notebook. Jersey numbers must be unique among active players.'}
+            : 'Add a new member to your team roster notebook.'}
         </p>
 
         {error && (
@@ -163,6 +162,9 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
             <div className="rating-input-field">
               <label className="rating-field-label">Full Name * (max 100 chars)</label>
               <input
+                id="player-name-input"
+                name="name"
+                autoFocus
                 type="text"
                 required
                 maxLength={100}
@@ -181,12 +183,9 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
             </div>
 
             <div className="rating-input-field">
-              <label className="rating-field-label">Jersey # *</label>
+              <label className="rating-field-label">Jersey #</label>
               <input
                 type="number"
-                min="0"
-                max="99"
-                required
                 placeholder="10"
                 value={formData.jerseyNumber}
                 onChange={(e) => setFormData({ ...formData, jerseyNumber: e.target.value })}

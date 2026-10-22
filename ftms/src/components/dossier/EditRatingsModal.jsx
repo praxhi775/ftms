@@ -14,7 +14,7 @@ export default function EditRatingsModal({
   onClose,
   onSave,
 }) {
-  const modalRef = useModalFocusTrap({ isOpen: true, onClose });
+  const modalRef = useModalFocusTrap({ isOpen: true, onClose, initialFocusSelector: 'input[type="number"]' });
 
   // Clone categories state for editing
   const [formData, setFormData] = useState(() => {

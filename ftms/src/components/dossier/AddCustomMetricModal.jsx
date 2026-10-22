@@ -149,6 +149,7 @@ export default function AddCustomMetricModal({
             </label>
             <input
               id="custom-metric-name"
+              autoFocus
               type="text"
               placeholder="e.g. Long Shots, Agility, Heading, Composure..."
               value={metricName}

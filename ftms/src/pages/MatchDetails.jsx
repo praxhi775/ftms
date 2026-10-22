@@ -22,7 +22,7 @@ import {
   Lock
 } from 'lucide-react';
 import { matchService } from '../services/matchService';
-import { playerService } from '../services/playerService';
+import { playerService, calcOverall } from '../services/playerService';
 import { statsService } from '../services/statsService';
 import { generateTeams, movePlayer, swapPlayers } from '../services/teamService';
 import MatchFormModal from '../components/matches/MatchFormModal';
@@ -57,6 +57,7 @@ export default function MatchDetails() {
   // Drag and Drop State
   const [draggingPlayer, setDraggingPlayer] = useState(null); // { id, fromTeamIdx }
   const [dragOverTarget, setDragOverTarget] = useState(null); // teamIdx or -1
+  const [dragOverPlayerId, setDragOverPlayerId] = useState(null);
 
   // Swap / Move state
   const [selectedPlayerToSwap, setSelectedPlayerToSwap] = useState(null); // { playerId, teamIndex }
@@ -168,6 +169,7 @@ export default function MatchDetails() {
   const handleDragEnd = () => {
     setDraggingPlayer(null);
     setDragOverTarget(null);
+    setDragOverPlayerId(null);
   };
 
   const handleDragOver = (e, targetTeamIdx) => {
@@ -229,6 +231,107 @@ export default function MatchDetails() {
     const pName = allPlayerMap[playerId]?.name || 'Player';
     const destination = targetTeamIdx >= 0 ? newTeams[targetTeamIdx].name : 'Unassigned Bench';
     showToast(`${pName} moved to ${destination}.`);
+  };
+
+  const handleDropOnPlayer = async (e, targetPlayerId, targetTeamIdx) => {
+    if (isCompleted) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverTarget(null);
+    setDragOverPlayerId(null);
+
+    let dragData = draggingPlayer;
+    if (!dragData) {
+      try {
+        const raw = e.dataTransfer.getData('text/plain');
+        if (raw) dragData = JSON.parse(raw);
+      } catch (err) {
+        console.error('Failed to parse drag data:', err);
+      }
+    }
+    if (!dragData) return;
+    const { playerId, fromTeamIdx } = dragData;
+    if (playerId === targetPlayerId) return;
+
+    let newTeams = teams.map((t) => ({ ...t, playerIds: [...t.playerIds] }));
+    if (fromTeamIdx >= 0 && fromTeamIdx < newTeams.length) {
+      newTeams[fromTeamIdx].playerIds = newTeams[fromTeamIdx].playerIds.filter((pid) => pid !== playerId);
+    }
+    if (targetTeamIdx >= 0 && targetTeamIdx < newTeams.length) {
+      const team = newTeams[targetTeamIdx];
+      team.playerIds = team.playerIds.filter((pid) => pid !== playerId);
+      const dropIdx = team.playerIds.indexOf(targetPlayerId);
+      if (dropIdx !== -1) {
+        team.playerIds.splice(dropIdx, 0, playerId);
+      } else {
+        team.playerIds.push(playerId);
+      }
+      team.sortBy = 'manual';
+    }
+
+    setTeams(newTeams);
+    setSelectedPlayerToSwap(null);
+    setDraggingPlayer(null);
+
+    if (match) {
+      await matchService.saveTeams(match.id, newTeams, guestPlayers);
+    }
+    const pName = allPlayerMap[playerId]?.name || 'Player';
+    showToast(`${pName} repositioned.`);
+  };
+
+  const handleTeamSortChange = async (teamIdx, newSortBy) => {
+    const updated = teams.map((t, idx) => {
+      if (idx !== teamIdx) return t;
+      let newIds = [...t.playerIds];
+      if (newSortBy === 'position') {
+        const posOrder = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
+        newIds.sort((aId, bId) => {
+          const a = allPlayerMap[aId];
+          const b = allPlayerMap[bId];
+          if (!a || !b) return 0;
+          const diff = (posOrder[a.position] || 99) - (posOrder[b.position] || 99);
+          if (diff !== 0) return diff;
+          return calcOverall(b.ratings) - calcOverall(a.ratings);
+        });
+      } else if (newSortBy === 'stats') {
+        newIds.sort((aId, bId) => {
+          const a = allPlayerMap[aId];
+          const b = allPlayerMap[bId];
+          if (!a || !b) return 0;
+          const diff = calcOverall(b.ratings) - calcOverall(a.ratings);
+          if (diff !== 0) return diff;
+          return a.name.localeCompare(b.name);
+        });
+      }
+      return { ...t, sortBy: newSortBy, playerIds: newIds };
+    });
+    setTeams(updated);
+    if (match) {
+      await matchService.saveTeams(match.id, updated, guestPlayers);
+    }
+    showToast(`Sorted ${teams[teamIdx]?.name || 'team'} by ${newSortBy}.`);
+  };
+
+  const getSortedPlayerList = (team) => {
+    const list = (team.playerIds || []).map((pid) => allPlayerMap[pid]).filter(Boolean);
+    const mode = team.sortBy || 'manual';
+    if (mode === 'position') {
+      const posOrder = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
+      return [...list].sort((a, b) => {
+        const diff = (posOrder[a.position] || 99) - (posOrder[b.position] || 99);
+        if (diff !== 0) return diff;
+        return calcOverall(b.ratings) - calcOverall(a.ratings);
+      });
+    }
+    if (mode === 'stats') {
+      return [...list].sort((a, b) => {
+        const diff = calcOverall(b.ratings) - calcOverall(a.ratings);
+        if (diff !== 0) return diff;
+        return a.name.localeCompare(b.name);
+      });
+    }
+    return list;
   };
 
   // --- Manual Team Management ---
@@ -834,7 +937,7 @@ export default function MatchDetails() {
                       fontSize: '10px',
                       fontWeight: 700
                     }}>
-                      {player.jerseyNumber || '•'}
+                      {player.jerseyNumber || 'â€¢'}
                     </span>
                     <strong style={{ fontSize: '12.5px', color: 'var(--text-primary)' }}>
                       {player.name}
@@ -848,6 +951,14 @@ export default function MatchDetails() {
                       fontWeight: 600
                     }}>
                       {player.position}
+                    </span>
+
+                    <span
+                      className="ovr-pill-badge"
+                      style={{ fontSize: '10px', padding: '1px 6px', fontWeight: 700 }}
+                      title={`Overall Score: ${calcOverall(player.ratings)}`}
+                    >
+                      OVR {calcOverall(player.ratings)}
                     </span>
 
                     {player.isGuest && (
@@ -928,9 +1039,12 @@ export default function MatchDetails() {
             gap: '16px'
           }}>
             {teams.map((team, teamIdx) => {
-              const teamPlayerList = (team.playerIds || []).map((pid) => allPlayerMap[pid]).filter(Boolean);
+              const teamPlayerList = getSortedPlayerList(team);
               const isDragTarget = dragOverTarget === teamIdx;
               const themeColor = PRESET_TEAM_COLORS[teamIdx % PRESET_TEAM_COLORS.length];
+              const avgScore = teamPlayerList.length > 0
+                ? Math.round(teamPlayerList.reduce((acc, p) => acc + calcOverall(p.ratings), 0) / teamPlayerList.length)
+                : 0;
 
               return (
                 <div
@@ -952,89 +1066,187 @@ export default function MatchDetails() {
                   }}
                 >
                   {/* Team Card Header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: '6px',
-                        backgroundColor: team.color || themeColor.bg,
-                        color: '#fff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '11px',
-                        fontWeight: 800,
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.15)'
-                      }}>
-                        {team.name ? team.name.charAt(0).toUpperCase() : String.fromCharCode(65 + teamIdx)}
-                      </span>
-                      <div>
-                        <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                          {team.name}
-                        </h3>
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                          {teamPlayerList.length} Players Assigned
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    borderBottom: '1px solid var(--border-subtle)',
+                    paddingBottom: '12px'
+                  }}>
+                    {/* Main Header Row: Team Icon + Name & Meta + Actions */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                        {/* Prominent Team Crest / Icon */}
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '10px',
+                          backgroundColor: team.color || themeColor.bg,
+                          color: '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '16px',
+                          fontWeight: 800,
+                          boxShadow: '0 2px 5px rgba(0,0,0,0.18)',
+                          border: '2px solid rgba(255,255,255,0.25)',
+                          flexShrink: 0
+                        }}>
+                          {team.name ? team.name.charAt(0).toUpperCase() : String.fromCharCode(65 + teamIdx)}
+                        </div>
+
+                        <div style={{ minWidth: 0 }}>
+                          <h3 style={{
+                            fontSize: '16px',
+                            fontWeight: 700,
+                            color: 'var(--text-primary)',
+                            margin: 0,
+                            lineHeight: 1.2,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>
+                            {team.name}
+                          </h3>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            marginTop: '4px',
+                            flexWrap: 'wrap'
+                          }}>
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                              {teamPlayerList.length} {teamPlayerList.length === 1 ? 'Player' : 'Players'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                        <span
+                          style={{
+                            color: '#059669',
+                            fontWeight: 700,
+                            fontSize: '13px',
+                            marginRight: !isCompleted ? '4px' : '0',
+                            letterSpacing: '-0.2px'
+                          }}
+                          title="Team Average Score"
+                        >
+                          Avg: {teamPlayerList.length > 0 ? avgScore : '--'}
                         </span>
+
+                        {!isCompleted && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingTeamIdx(teamIdx);
+                                setIsTeamModalOpen(true);
+                              }}
+                              title={`Edit ${team.name} name & jersey color`}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#6B7280',
+                                padding: '6px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.color = 'var(--forest-green)';
+                                e.currentTarget.style.backgroundColor = 'var(--pale-green-bg)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.color = '#6B7280';
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                              }}
+                            >
+                              <Edit2 size={15} />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTeam(teamIdx)}
+                              title={`Delete ${team.name}`}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#9CA3AF',
+                                padding: '6px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.color = '#EF4444';
+                                e.currentTarget.style.backgroundColor = '#FEE2E2';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.color = '#9CA3AF';
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                              }}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
 
+                    {/* Sub-bar with Sort Control and Lineup Hint */}
                     {!isCompleted && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingTeamIdx(teamIdx);
-                            setIsTeamModalOpen(true);
-                          }}
-                          title={`Edit ${team.name} name & jersey color`}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#6B7280',
-                            padding: '5px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.color = 'var(--forest-green)';
-                            e.currentTarget.style.backgroundColor = 'var(--pale-green-bg)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.color = '#6B7280';
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                          }}
-                        >
-                          <Edit2 size={14} />
-                        </button>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        paddingTop: '6px',
+                        borderTop: '1px dashed var(--border-subtle)'
+                      }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          {team.sortBy === 'manual' || !team.sortBy
+                            ? 'Drag players to reorder'
+                            : `Sorted by ${team.sortBy === 'stats' ? 'Overall Rating' : 'Position'}`}
+                        </span>
 
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteTeam(teamIdx)}
-                          title={`Delete ${team.name}`}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#9CA3AF',
-                            padding: '5px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.color = '#EF4444';
-                            e.currentTarget.style.backgroundColor = '#FEE2E2';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.color = '#9CA3AF';
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <label
+                            htmlFor={`team-sort-match-${teamIdx}`}
+                            style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}
+                          >
+                            Sort:
+                          </label>
+                          <select
+                            id={`team-sort-match-${teamIdx}`}
+                            aria-label={`Sort players in ${team.name}`}
+                            value={team.sortBy || 'manual'}
+                            onChange={(e) => handleTeamSortChange(teamIdx, e.target.value)}
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              border: '1px solid var(--border-subtle)',
+                              backgroundColor: '#fff',
+                              fontSize: '11.5px',
+                              fontWeight: 600,
+                              color: 'var(--text-primary)',
+                              cursor: 'pointer'
+                            }}
+                            title="Sort within team: Manual, Position, or Stats"
+                          >
+                            <option value="manual">Manual</option>
+                            <option value="position">Position</option>
+                            <option value="stats">Stats (OVR)</option>
+                          </select>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1056,6 +1268,7 @@ export default function MatchDetails() {
                       {teamPlayerList.map((player) => {
                         const isSelected = !isCompleted && selectedPlayerToSwap?.playerId === player.id;
                         const isDragging = !isCompleted && draggingPlayer?.playerId === player.id;
+                        const isDropTargetPlayer = !isCompleted && dragOverPlayerId === player.id && draggingPlayer?.playerId !== player.id;
 
                         return (
                           <div
@@ -1063,6 +1276,22 @@ export default function MatchDetails() {
                             draggable={!isCompleted}
                             onDragStart={isCompleted ? undefined : (e) => handleDragStart(e, player.id, teamIdx)}
                             onDragEnd={isCompleted ? undefined : handleDragEnd}
+                            onDragOver={isCompleted ? undefined : (e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (dragOverPlayerId !== player.id) {
+                                setDragOverPlayerId(player.id);
+                              }
+                            }}
+                            onDragLeave={isCompleted ? undefined : (e) => {
+                              if (dragOverPlayerId === player.id) {
+                                setDragOverPlayerId(null);
+                              }
+                            }}
+                            onDrop={isCompleted ? undefined : (e) => {
+                              setDragOverPlayerId(null);
+                              handleDropOnPlayer(e, player.id, teamIdx);
+                            }}
                             onClick={isCompleted ? undefined : () => handlePlayerClick(player.id, teamIdx)}
                             style={{
                               display: 'flex',
@@ -1070,16 +1299,17 @@ export default function MatchDetails() {
                               justifyContent: 'space-between',
                               padding: '8px 10px',
                               borderRadius: '8px',
-                              backgroundColor: isSelected ? '#EFF6FF' : 'var(--bg-subtle)',
-                              border: isSelected ? '1px solid #3B82F6' : '1px solid transparent',
-                              cursor: isCompleted ? 'default' : 'grab',
+                              backgroundColor: isSelected ? '#EFF6FF' : (isDropTargetPlayer ? '#ECFDF5' : 'var(--bg-subtle)'),
+                              border: isSelected ? '1px solid #3B82F6' : (isDropTargetPlayer ? '1px dashed #059669' : '1px solid transparent'),
+                              cursor: isCompleted ? 'default' : (isDragging ? 'grabbing' : 'grab'),
                               opacity: isDragging ? 0.35 : 1,
                               userSelect: 'none',
                               transition: 'all 0.12s ease',
+                              gap: '8px'
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              {!isCompleted && <GripVertical size={13} style={{ color: '#9CA3AF' }} />}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                              {!isCompleted && <GripVertical size={13} style={{ color: '#9CA3AF', flexShrink: 0 }} />}
                               <span style={{
                                 width: '22px',
                                 height: '22px',
@@ -1090,12 +1320,13 @@ export default function MatchDetails() {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 fontSize: '11px',
-                                fontWeight: 700
+                                fontWeight: 700,
+                                flexShrink: 0
                               }}>
                                 {player.jerseyNumber || '•'}
                               </span>
-                              <div>
-                                <strong style={{ fontSize: '13px', color: 'var(--text-primary)', display: 'block' }}>
+                              <div style={{ minWidth: 0 }}>
+                                <strong style={{ fontSize: '13px', color: 'var(--text-primary)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                   {player.name}
                                 </strong>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -1118,19 +1349,30 @@ export default function MatchDetails() {
                               </div>
                             </div>
 
-                            {!isCompleted && player.isGuest && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveGuestPlayer(player.id);
-                                }}
-                                title="Remove Guest"
-                                style={{ color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: 'auto', border: 'none', background: 'none' }}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                              {/* Player Overall Score */}
+                              <span
+                                className="ovr-pill-badge"
+                                style={{ fontSize: '10.5px', padding: '2px 7px' }}
+                                title={`Overall Score: ${calcOverall(player.ratings)}`}
                               >
-                                <X size={13} />
-                              </button>
-                            )}
+                                OVR {calcOverall(player.ratings)}
+                              </span>
+
+                              {!isCompleted && player.isGuest && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveGuestPlayer(player.id);
+                                  }}
+                                  title="Remove Guest"
+                                  style={{ color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', border: 'none', background: 'none', padding: '2px' }}
+                                >
+                                  <X size={13} />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         );
                       })}

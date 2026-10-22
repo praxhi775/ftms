@@ -22,7 +22,7 @@ export function useModalFocusTrap({ isOpen, onClose, initialFocusSelector }) {
     const modalElement = containerRef.current;
     if (!modalElement) return;
 
-    // Focus first appropriate element
+    // Focus first appropriate element: prioritize initialFocusSelector, then [autofocus], then first input/textarea/select field, before generic focusable items
     const focusTimer = setTimeout(() => {
       if (initialFocusSelector) {
         const target = modalElement.querySelector(initialFocusSelector);
@@ -30,6 +30,22 @@ export function useModalFocusTrap({ isOpen, onClose, initialFocusSelector }) {
           target.focus();
           return;
         }
+      }
+
+      // Check for explicitly marked autofocus element
+      const autoFocusEl = modalElement.querySelector('[autofocus]');
+      if (autoFocusEl && typeof autoFocusEl.focus === 'function') {
+        autoFocusEl.focus();
+        return;
+      }
+
+      // Check for first editable form field (input, textarea, select)
+      const firstField = modalElement.querySelector(
+        'input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([disabled]), textarea:not([disabled]), select:not([disabled])'
+      );
+      if (firstField && typeof firstField.focus === 'function') {
+        firstField.focus();
+        return;
       }
 
       const focusable = modalElement.querySelectorAll(

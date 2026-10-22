@@ -1,4 +1,4 @@
-(Oct 12-16)
+﻿(Oct 12-16)
 ✅On going to players section, we should get list of players, and I should be able to navigate to their profile 
 
 ✅create db using IndexDB , store player info, team info, match info.
@@ -29,10 +29,10 @@ also manage uneven team distribution by handling odd number of players.
 
 ✅ Name field can have upto 100 chars.
 
-⭕ Auto focus on fields.
+✅ Auto focus on fields.
 
-⭕ Jersey number <999.
+✅ Jersey number constraints such as unique value or range to be removed.
 
-⭕ Sort within the team (manual,position, stats).
+✅ Sort within the team (manual,position, stats).
 
-⭕ Player overall score should get displayed while team creation , and team's average score should also get displayed.
+✅ Player overall score should get displayed while team creation , and team's average score should also get displayed.

@@ -12,7 +12,7 @@ export default function RecordStatsModal({
   existingStats = [],
   onStatsSaved,
 }) {
-  const modalRef = useModalFocusTrap({ isOpen, onClose });
+  const modalRef = useModalFocusTrap({ isOpen, onClose, initialFocusSelector: 'input[type="number"], select' });
   // Key format: `${playerId}_${statDefId}` -> value
   const [statValues, setStatValues] = useState(() => {
     const map = {};

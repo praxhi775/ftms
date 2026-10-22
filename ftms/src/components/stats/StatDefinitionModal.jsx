@@ -149,6 +149,7 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
             <label htmlFor="stat-name-input" className="rating-field-label">Statistic Name *</label>
             <input
               id="stat-name-input"
+              autoFocus
               type="text"
               required
               placeholder="e.g. Tackles Won, Teamwork, Interceptions, Key Passes..."

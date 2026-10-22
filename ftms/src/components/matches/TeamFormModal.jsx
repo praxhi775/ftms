@@ -151,6 +151,7 @@ export default function TeamFormModal({
             </label>
             <input
               id="team-name-input"
+              autoFocus
               type="text"
               required
               maxLength={50}

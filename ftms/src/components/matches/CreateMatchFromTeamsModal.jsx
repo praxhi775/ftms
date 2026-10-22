@@ -292,6 +292,7 @@ export default function CreateMatchFromTeamsModal({
                 </label>
                 <input
                   id="match-title-input"
+                  autoFocus
                   type="text"
                   required
                   value={formData.title}

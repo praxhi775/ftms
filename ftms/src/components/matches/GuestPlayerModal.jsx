@@ -101,6 +101,7 @@ export default function GuestPlayerModal({ isOpen, onClose, onSave, teams = [] }
             </label>
             <input
               id="guest-name-input"
+              autoFocus
               type="text"
               required
               maxLength={100}

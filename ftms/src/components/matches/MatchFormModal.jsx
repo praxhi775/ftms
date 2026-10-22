@@ -5,7 +5,7 @@ import { matchService } from '../../services/matchService';
 import { useModalFocusTrap } from '../../utils/useModalFocusTrap';
 
 export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToEdit }) {
-  const modalRef = useModalFocusTrap({ isOpen, onClose });
+  const modalRef = useModalFocusTrap({ isOpen, onClose, initialFocusSelector: '#match-title-input' });
   const [formData, setFormData] = useState({
     title: '',
     opponent: '',
@@ -189,6 +189,8 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
             <div className="rating-input-field">
               <label className="rating-field-label">Match Title *</label>
               <input
+                id="match-title-input"
+                autoFocus
                 type="text"
                 required
                 placeholder="e.g. Sunday Scrimmage #15"
