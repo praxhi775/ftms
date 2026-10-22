@@ -29,4 +29,10 @@ also manage uneven team distribution by handling odd number of players.
 
 ✅ Name field can have upto 100 chars.
 
-⭕
+⭕ Auto focus on fields.
+
+⭕ Jersey number <999.
+
+⭕ Sort within the team (manual,position, stats).
+
+⭕ Player overall score should get displayed while team creation , and team's average score should also get displayed.
