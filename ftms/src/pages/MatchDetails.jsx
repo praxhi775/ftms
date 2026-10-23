@@ -1130,7 +1130,7 @@ export default function MatchDetails() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                         <span
                           style={{
-                            color: '#059669',
+                            color: 'rgb(0,59,27)',
                             fontWeight: 700,
                             fontSize: '13px',
                             marginRight: !isCompleted ? '4px' : '0',

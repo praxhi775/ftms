@@ -1,12 +1,39 @@
 import db from '../db/database';
 
+const POSITION_ORDER = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
+
+// Normalises jersey number input: '' / null -> null, numeric -> Number, otherwise keep as-is.
+function normalizeJersey(value) {
+  if (value === '' || value == null) return null;
+  return !isNaN(Number(value)) ? Number(value) : value;
+}
+
+function validatePhysical({ height, weight }) {
+  if (height != null && height !== '') {
+    const h = Number(height);
+    if (isNaN(h) || h <= 100 || h >= 250) {
+      throw new Error('Height must be greater than 100 cm and less than 250 cm (101–249 cm).');
+    }
+  }
+
+  if (weight != null && weight !== '') {
+    const w = Number(weight);
+    if (isNaN(w) || w <= 20 || w >= 200) {
+      throw new Error('Weight must be greater than 20 kg and less than 200 kg (21–199 kg).');
+    }
+  }
+}
+
 export const playerService = {
   async getAll() {
-    return db.players.toArray();
+    const all = await db.players.toArray();
+    // Skip corrupted records (missing name) so UI code never crashes on them
+    return all.filter((p) => p && typeof p.name === 'string');
   },
 
   async getActive() {
-    return db.players.where('status').anyOf('active', 'injured').toArray();
+    const list = await db.players.where('status').anyOf('active', 'injured').toArray();
+    return list.filter((p) => p && typeof p.name === 'string');
   },
 
   async getById(id) {
@@ -14,8 +41,9 @@ export const playerService = {
   },
 
   async search(query, positionFilter = '', sortBy = 'name') {
-    let collection = db.players.toCollection();
-    let results = await collection.toArray();
+    let results = (await db.players.toArray()).filter(
+      (p) => p && typeof p.name === 'string'
+    );
 
     if (query) {
       const q = query.toLowerCase();
@@ -31,18 +59,23 @@ export const playerService = {
     }
 
     results.sort((a, b) => {
-      if (sortBy === 'jerseyNumber') return a.jerseyNumber - b.jerseyNumber;
+      if (sortBy === 'jerseyNumber') {
+        const jA = Number(a.jerseyNumber);
+        const jB = Number(b.jerseyNumber);
+        // Players without a (numeric) jersey number go last
+        const nA = isNaN(jA) || a.jerseyNumber == null || a.jerseyNumber === '' ? Infinity : jA;
+        const nB = isNaN(jB) || b.jerseyNumber == null || b.jerseyNumber === '' ? Infinity : jB;
+        if (nA === nB) return 0;
+        return nA < nB ? -1 : 1;
+      }
       if (sortBy === 'rating') {
-        const rA = calcOverall(a.ratings);
-        const rB = calcOverall(b.ratings);
-        return rB - rA;
+        return calcOverall(b.ratings) - calcOverall(a.ratings);
       }
       if (sortBy === 'age') {
         return (a.age || 0) - (b.age || 0);
       }
       if (sortBy === 'position') {
-        const order = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
-        return (order[a.position] || 99) - (order[b.position] || 99);
+        return (POSITION_ORDER[a.position] || 99) - (POSITION_ORDER[b.position] || 99);
       }
       return a.name.localeCompare(b.name);
     });
@@ -56,29 +89,12 @@ export const playerService = {
     if (player.name.trim().length > 100) throw new Error('Player name cannot exceed 100 characters.');
     if (!player.position) throw new Error('Position is required.');
 
-    // Validate physical constraints
-    if (player.height != null && player.height !== '') {
-      const h = Number(player.height);
-      if (isNaN(h) || h <= 100 || h >= 250) {
-        throw new Error('Height must be greater than 100 cm and less than 250 cm (101–249 cm).');
-      }
-    }
-
-    if (player.weight != null && player.weight !== '') {
-      const w = Number(player.weight);
-      if (isNaN(w) || w <= 20 || w >= 200) {
-        throw new Error('Weight must be greater than 20 kg and less than 200 kg (21–199 kg).');
-      }
-    }
-
-    const jerseyNumber = (player.jerseyNumber !== '' && player.jerseyNumber != null && !isNaN(Number(player.jerseyNumber)))
-      ? Number(player.jerseyNumber)
-      : (player.jerseyNumber != null && player.jerseyNumber !== '' ? player.jerseyNumber : null);
+    validatePhysical(player);
 
     return db.players.add({
       ...player,
       name: player.name.trim(),
-      jerseyNumber,
+      jerseyNumber: normalizeJersey(player.jerseyNumber),
       age: player.age ? Number(player.age) : null,
       height: player.height ? Number(player.height) : null,
       weight: player.weight ? Number(player.weight) : null,
@@ -94,34 +110,24 @@ export const playerService = {
       if (updates.name.trim().length > 100) throw new Error('Player name cannot exceed 100 characters.');
     }
 
-    if (updates.height != null && updates.height !== '') {
-      const h = Number(updates.height);
-      if (isNaN(h) || h <= 100 || h >= 250) {
-        throw new Error('Height must be greater than 100 cm and less than 250 cm (101–249 cm).');
-      }
-    }
+    validatePhysical(updates);
 
-    if (updates.weight != null && updates.weight !== '') {
-      const w = Number(updates.weight);
-      if (isNaN(w) || w <= 20 || w >= 200) {
-        throw new Error('Weight must be greater than 20 kg and less than 200 kg (21–199 kg).');
-      }
-    }
+    // Only include fields that were actually provided.
+    // Passing `undefined` to Dexie's update() DELETES that property from the record.
+    const patch = { ...updates };
 
-    const jerseyNumber = updates.jerseyNumber !== undefined
-      ? (updates.jerseyNumber !== '' && updates.jerseyNumber != null && !isNaN(Number(updates.jerseyNumber))
-          ? Number(updates.jerseyNumber)
-          : (updates.jerseyNumber !== '' && updates.jerseyNumber != null ? updates.jerseyNumber : null))
-      : undefined;
+    if (updates.name != null) patch.name = updates.name.trim();
+    if (updates.jerseyNumber !== undefined) patch.jerseyNumber = normalizeJersey(updates.jerseyNumber);
+    if (updates.age != null) patch.age = Number(updates.age);
+    if (updates.height != null) patch.height = Number(updates.height);
+    if (updates.weight != null) patch.weight = Number(updates.weight);
 
-    return db.players.update(id, {
-      ...updates,
-      name: updates.name != null ? updates.name.trim() : undefined,
-      jerseyNumber,
-      age: updates.age != null ? Number(updates.age) : undefined,
-      height: updates.height != null ? Number(updates.height) : undefined,
-      weight: updates.weight != null ? Number(updates.weight) : undefined,
+    // Drop any key whose value is undefined, as a final safety net
+    Object.keys(patch).forEach((key) => {
+      if (patch[key] === undefined) delete patch[key];
     });
+
+    return db.players.update(id, patch);
   },
 
   async remove(id) {
@@ -136,6 +142,18 @@ export const playerService = {
     const all = await db.players.toArray();
     return all.filter((p) => p.status === 'active' || p.status === 'injured').length;
   },
+
+  // One-off cleanup: deletes records already corrupted (missing/blank name).
+  // Run once from the console or temporarily on app startup:
+  //   await playerService.removeCorrupted();
+  async removeCorrupted() {
+    const bad = await db.players
+      .filter((p) => !p || typeof p.name !== 'string' || !p.name.trim())
+      .toArray();
+    console.log('Removing corrupted players:', bad);
+    await db.players.bulkDelete(bad.map((p) => p.id));
+    return bad.length;
+  },
 };
 
 export function calcOverall(ratings) {
@@ -147,8 +165,9 @@ export function calcOverall(ratings) {
 }
 
 export function getInitials(name) {
-  return name
+  return (name || '')
     .split(' ')
+    .filter(Boolean)
     .map((w) => w[0])
     .join('')
     .toUpperCase()
