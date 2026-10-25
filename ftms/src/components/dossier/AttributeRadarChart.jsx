@@ -74,19 +74,21 @@ export default function AttributeRadarChart({ chartMetrics = [] }) {
   }, [axes, radius, cx, cy]);
 
   // Normalized data polygon points
-  const { dataPointsString, vertices } = useMemo(() => {
-    if (axes.length < 3) return { dataPointsString: '', vertices: [] };
-    const coords = axes.map((axis) => {
+  const vertices = useMemo(() => {
+    if (axes.length === 0) return [];
+    return axes.map((axis) => {
       const r = (axis.val / 100) * radius;
       const rad = (axis.angle * Math.PI) / 180;
       const x = cx + r * Math.cos(rad);
       const y = cy + r * Math.sin(rad);
       return { x, y, val: axis.val, label: axis.label, key: axis.key };
     });
-
-    const ptsString = coords.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
-    return { dataPointsString: ptsString, vertices: coords };
   }, [axes, radius, cx, cy]);
+
+  const dataPointsString = useMemo(() => {
+    if (axes.length < 3) return '';
+    return vertices.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+  }, [axes, vertices]);
 
   // Keyboard navigation across axes
   const handleBadgeKeyDown = (e, index) => {
@@ -146,52 +148,7 @@ export default function AttributeRadarChart({ chartMetrics = [] }) {
       </div>
 
       {axes.length === 0 ? (
-        <div
-          className="radar-blank-state"
-          style={{
-            height: '320px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#FAF8F4',
-            borderRadius: '14px',
-            border: '1px dashed #D8D2C5',
-            margin: '16px 0',
-            textAlign: 'center',
-            padding: '20px'
-          }}
-        >
-          <p style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text-primary)' }}>
-            No Metrics Selected
-          </p>
-          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Toggle "Chart" on sub-metrics below to display attributes in this chart.
-          </p>
-        </div>
-      ) : axes.length < 3 ? (
-        <div
-          style={{
-            height: '320px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '30px 20px',
-            textAlign: 'center',
-            backgroundColor: '#FAF8F4',
-            borderRadius: '14px',
-            border: '1px dashed #D8D2C5',
-            margin: '16px 0',
-          }}
-        >
-          <p style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text-primary)' }}>
-            Radar Chart Requires at Least 3 Active Metrics
-          </p>
-          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Currently {axes.length} selected ({axes.map((a) => a.label).join(', ')}). Toggle "Chart" on more sub-metrics below to form a polygon.
-          </p>
-        </div>
+        <div className="radar-blank-state" style={{ minHeight: '320px' }} />
       ) : (
         /* Interactive Radar Visualizer */
         <div className="radar-visualizer-wrapper">
@@ -199,16 +156,29 @@ export default function AttributeRadarChart({ chartMetrics = [] }) {
             viewBox="0 0 400 360"
             className="radar-svg"
             role="img"
-            aria-label={`${axes.length}-axis Player Attribute Radar Chart displaying ${axes.map((a) => `${a.label}: ${a.val}`).join(', ')}`}
+            aria-label={`${axes.length}-axis Player Attribute Profile displaying ${axes.map((a) => `${a.label}: ${a.val}`).join(', ')}`}
           >
             {/* Concentric Grid Rings */}
-            {gridRings.map((pts, i) => (
-              <polygon
-                key={`ring-${i}`}
-                points={pts}
-                className="radar-grid-ring"
-              />
-            ))}
+            {axes.length >= 3 ? (
+              gridRings.map((pts, i) => (
+                <polygon
+                  key={`ring-${i}`}
+                  points={pts}
+                  className="radar-grid-ring"
+                />
+              ))
+            ) : (
+              RING_LEVELS.map((lvl, i) => (
+                <circle
+                  key={`circle-ring-${i}`}
+                  cx={cx}
+                  cy={cy}
+                  r={radius * lvl}
+                  className="radar-grid-ring"
+                  fill="none"
+                />
+              ))
+            )}
 
             {/* Radial Spokes */}
             {spokes.map((spoke, idx) => {
@@ -226,11 +196,37 @@ export default function AttributeRadarChart({ chartMetrics = [] }) {
               );
             })}
 
-            {/* Player Ratings Data Polygon */}
-            <polygon
-              points={dataPointsString}
-              className="radar-data-polygon"
-            />
+            {/* Data Shape */}
+            {axes.length >= 3 && dataPointsString && (
+              <polygon
+                points={dataPointsString}
+                className="radar-data-polygon"
+              />
+            )}
+
+            {axes.length === 2 && vertices.length === 2 && (
+              <line
+                x1={vertices[0].x}
+                y1={vertices[0].y}
+                x2={vertices[1].x}
+                y2={vertices[1].y}
+                stroke="#059669"
+                strokeWidth={3}
+                strokeLinecap="round"
+              />
+            )}
+
+            {axes.length === 1 && vertices.length === 1 && (
+              <line
+                x1={cx}
+                y1={cy}
+                x2={vertices[0].x}
+                y2={vertices[0].y}
+                stroke="#059669"
+                strokeWidth={3}
+                strokeLinecap="round"
+              />
+            )}
 
             {/* Vertex Points */}
             {vertices.map((v, idx) => {
@@ -240,9 +236,9 @@ export default function AttributeRadarChart({ chartMetrics = [] }) {
                   key={`vertex-${v.key}`}
                   cx={v.x}
                   cy={v.y}
-                  r={isHighlight ? 6 : 4}
+                  r={isHighlight ? 6 : 4.5}
                   className="radar-vertex-dot"
-                  style={isHighlight ? { fill: '#16A34A', strokeWidth: 2 } : undefined}
+                  style={isHighlight ? { fill: '#16A34A', strokeWidth: 2 } : { fill: '#003B1B' }}
                 />
               );
             })}

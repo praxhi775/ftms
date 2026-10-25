@@ -90,6 +90,12 @@ export default function EditRatingsModal({
         const sum = numericMetrics.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
         const calculatedAvg = Math.round(sum / numericMetrics.length);
         avgStr = `${calculatedAvg} AVG`;
+      } else if (sanitizedMetrics.length > 0) {
+        const sum = sanitizedMetrics.reduce((acc, m) => {
+          const qVal = m.value === 'High' ? 85 : m.value === 'Low' ? 45 : 65;
+          return acc + qVal;
+        }, 0);
+        avgStr = `${Math.round(sum / sanitizedMetrics.length)} AVG`;
       }
       return {
         ...cat,

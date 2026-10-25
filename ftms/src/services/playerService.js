@@ -161,15 +161,26 @@ export const playerService = {
 export function calcOverall(ratingsOrPlayer) {
   if (!ratingsOrPlayer) return 50;
 
-  // 1. If a player object with subMetrics is passed, calculate overall from numeric subMetrics
+  // 1. If a player object with subMetrics is passed, calculate overall from category averages
   const subMetrics = ratingsOrPlayer.subMetrics;
   if (subMetrics && Array.isArray(subMetrics) && subMetrics.length > 0) {
-    const numeric = subMetrics.flatMap((c) =>
-      (c.metrics || []).filter((m) => m.type === 'numeric')
-    );
-    if (numeric.length > 0) {
-      const sum = numeric.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
-      return Math.round(sum / numeric.length);
+    const catAvgs = subMetrics
+      .map((c) => {
+        const parsed = parseInt(c.avg, 10);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+        const metrics = c.metrics || [];
+        const numMetrics = metrics.filter((m) => m.type === 'numeric');
+        if (numMetrics.length > 0) {
+          const sum = numMetrics.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
+          return Math.round(sum / numMetrics.length);
+        }
+        return 50;
+      })
+      .filter((n) => typeof n === 'number' && !isNaN(n));
+
+    if (catAvgs.length > 0) {
+      const sum = catAvgs.reduce((a, b) => a + b, 0);
+      return Math.round(sum / catAvgs.length);
     }
   }
 
@@ -336,23 +347,23 @@ export function deriveRatingsFromSubMetrics(categories, existingRatings = {}) {
     phy: Math.max(1, Math.min(99, phy)),
   };
 
-  // Align weighted 6-stat overall with submetric overall average
-  const numericMetrics = allMetrics.filter((m) => m.type === 'numeric');
-  if (numericMetrics.length > 0) {
-    const targetOvr = Math.round(
-      numericMetrics.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0) / numericMetrics.length
-    );
-    const currentCalc = calcOverall(derived);
-    const diff = targetOvr - currentCalc;
-    if (diff !== 0) {
-      // Adjust attributes evenly by the difference so calcOverall(derived) === targetOvr
-      derived.pac = Math.max(1, Math.min(99, derived.pac + diff));
-      derived.sho = Math.max(1, Math.min(99, derived.sho + diff));
-      derived.pas = Math.max(1, Math.min(99, derived.pas + diff));
-      derived.dri = Math.max(1, Math.min(99, derived.dri + diff));
-      derived.def = Math.max(1, Math.min(99, derived.def + diff));
-      derived.phy = Math.max(1, Math.min(99, derived.phy + diff));
-    }
+  // Align weighted 6-stat overall with category overall average
+  const catAvgs = categories
+    .map((c) => parseInt(c.avg, 10))
+    .filter((n) => typeof n === 'number' && !isNaN(n) && n > 0);
+  const targetOvr = catAvgs.length > 0
+    ? Math.round(catAvgs.reduce((a, b) => a + b, 0) / catAvgs.length)
+    : 50;
+  const currentCalc = calcOverall(derived);
+  const diff = targetOvr - currentCalc;
+  if (diff !== 0) {
+    // Adjust attributes evenly by the difference so calcOverall(derived) === targetOvr
+    derived.pac = Math.max(1, Math.min(99, derived.pac + diff));
+    derived.sho = Math.max(1, Math.min(99, derived.sho + diff));
+    derived.pas = Math.max(1, Math.min(99, derived.pas + diff));
+    derived.dri = Math.max(1, Math.min(99, derived.dri + diff));
+    derived.def = Math.max(1, Math.min(99, derived.def + diff));
+    derived.phy = Math.max(1, Math.min(99, derived.phy + diff));
   }
 
   return derived;

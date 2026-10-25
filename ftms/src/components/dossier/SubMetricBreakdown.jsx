@@ -25,6 +25,20 @@ export default function SubMetricBreakdown({
     onChangeCategories(updated);
   };
 
+  const calcCategoryAvg = (metrics) => {
+    if (!metrics || metrics.length === 0) return '50 AVG';
+    const numeric = metrics.filter((m) => m.type === 'numeric');
+    if (numeric.length > 0) {
+      const sum = numeric.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
+      return `${Math.round(sum / numeric.length)} AVG`;
+    }
+    const sum = metrics.reduce((acc, m) => {
+      const qVal = m.value === 'High' ? 85 : m.value === 'Low' ? 45 : 65;
+      return acc + qVal;
+    }, 0);
+    return `${Math.round(sum / metrics.length)} AVG`;
+  };
+
   const handleNumericChange = (catId, metricId, rawVal) => {
     if (!onChangeCategories) return;
     let num = parseInt(rawVal, 10);
@@ -36,16 +50,10 @@ export default function SubMetricBreakdown({
       const updatedMetrics = cat.metrics.map((m) =>
         m.id === metricId ? { ...m, value: num } : m
       );
-      const numeric = updatedMetrics.filter((m) => m.type === 'numeric');
-      let avgStr = cat.avg;
-      if (numeric.length > 0) {
-        const sum = numeric.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
-        avgStr = `${Math.round(sum / numeric.length)} AVG`;
-      }
       return {
         ...cat,
         metrics: updatedMetrics,
-        avg: avgStr,
+        avg: calcCategoryAvg(updatedMetrics),
       };
     });
     onChangeCategories(updated);
@@ -58,11 +66,13 @@ export default function SubMetricBreakdown({
 
     const updated = categories.map((cat) => {
       if (cat.id !== catId) return cat;
+      const updatedMetrics = cat.metrics.map((m) =>
+        m.id === metricId ? { ...m, value: nextVal } : m
+      );
       return {
         ...cat,
-        metrics: cat.metrics.map((m) =>
-          m.id === metricId ? { ...m, value: nextVal } : m
-        ),
+        metrics: updatedMetrics,
+        avg: calcCategoryAvg(updatedMetrics),
       };
     });
     onChangeCategories(updated);
@@ -73,17 +83,10 @@ export default function SubMetricBreakdown({
     const updated = categories.map((cat) => {
       if (cat.id !== catId) return cat;
       const filtered = cat.metrics.filter((m) => m.id !== metricId);
-      // Recalculate average
-      const numeric = filtered.filter((m) => m.type === 'numeric');
-      let avgStr = cat.avg;
-      if (numeric.length > 0) {
-        const sum = numeric.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
-        avgStr = `${Math.round(sum / numeric.length)} AVG`;
-      }
       return {
         ...cat,
         metrics: filtered,
-        avg: avgStr,
+        avg: calcCategoryAvg(filtered),
       };
     });
     onChangeCategories(updated);

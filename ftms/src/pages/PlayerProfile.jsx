@@ -161,11 +161,18 @@ export default function PlayerProfile() {
   const handleUpdateSubMetrics = async (newCategories) => {
     try {
       const updatedCategories = newCategories.map((cat) => {
-        const numeric = (cat.metrics || []).filter((m) => m.type === 'numeric');
+        const metrics = cat.metrics || [];
+        const numeric = metrics.filter((m) => m.type === 'numeric');
         let avgStr = cat.avg;
         if (numeric.length > 0) {
           const sum = numeric.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
           avgStr = `${Math.round(sum / numeric.length)} AVG`;
+        } else if (metrics.length > 0) {
+          const sum = metrics.reduce((acc, m) => {
+            const qVal = m.value === 'High' ? 85 : m.value === 'Low' ? 45 : 65;
+            return acc + qVal;
+          }, 0);
+          avgStr = `${Math.round(sum / metrics.length)} AVG`;
         }
         return { ...cat, avg: avgStr };
       });
