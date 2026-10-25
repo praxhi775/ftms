@@ -10,7 +10,12 @@ import {
   Award,
   ChevronRight 
 } from 'lucide-react';
-import { playerService, calcOverall } from '../services/playerService';
+import { 
+  playerService, 
+  calcOverall, 
+  deriveSubMetricsFromRatings, 
+  deriveRatingsFromSubMetrics 
+} from '../services/playerService';
 import { matchService } from '../services/matchService';
 import { statsService } from '../services/statsService';
 import AttributeRadarChart from '../components/dossier/AttributeRadarChart';
@@ -20,7 +25,7 @@ import EditRatingsModal from '../components/dossier/EditRatingsModal';
 import PlayerFormModal from '../components/players/PlayerFormModal';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 
-export const DEFAULT_SUBMETRICS = [
+const DEFAULT_SUBMETRICS = [
   {
     id: 'physical',
     title: 'Physical',
@@ -90,7 +95,11 @@ export default function PlayerProfile() {
       if (data.subMetrics && Array.isArray(data.subMetrics) && data.subMetrics.length > 0) {
         setCategories(data.subMetrics);
       } else {
-        setCategories(DEFAULT_SUBMETRICS);
+        const initialSubs = deriveSubMetricsFromRatings(data.ratings);
+        setCategories(initialSubs);
+        playerService.update(playerId, { subMetrics: initialSubs }).catch((err) => {
+          console.error('Failed to initialize subMetrics on player:', err);
+        });
       }
 
       // Load player's match history
@@ -146,21 +155,35 @@ export default function PlayerProfile() {
 
   // Overall rating derived from sub-metrics
   const ovrRating = useMemo(() => {
-    if (!categories) return 50;
-    const numeric = categories.flatMap((c) => c.metrics.filter((m) => m.type === 'numeric'));
-    if (numeric.length === 0) {
-      return player?.ratings ? calcOverall(player.ratings) : 50;
-    }
-    const sum = numeric.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
-    return Math.round(sum / numeric.length);
+    return calcOverall({ subMetrics: categories, ratings: player?.ratings });
   }, [categories, player]);
 
   const handleUpdateSubMetrics = async (newCategories) => {
     try {
-      setCategories(newCategories);
+      const updatedCategories = newCategories.map((cat) => {
+        const numeric = (cat.metrics || []).filter((m) => m.type === 'numeric');
+        let avgStr = cat.avg;
+        if (numeric.length > 0) {
+          const sum = numeric.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
+          avgStr = `${Math.round(sum / numeric.length)} AVG`;
+        }
+        return { ...cat, avg: avgStr };
+      });
+
+      const derivedRatings = deriveRatingsFromSubMetrics(updatedCategories, player?.ratings);
+
+      setCategories(updatedCategories);
+      setPlayer((prev) => ({
+        ...prev,
+        subMetrics: updatedCategories,
+        ratings: derivedRatings,
+      }));
+
       if (player?.id) {
-        await playerService.update(player.id, { subMetrics: newCategories });
-        setPlayer((prev) => ({ ...prev, subMetrics: newCategories }));
+        await playerService.update(player.id, {
+          subMetrics: updatedCategories,
+          ratings: derivedRatings,
+        });
       }
       showToast('Tactical sub-metric ratings updated.');
     } catch (err) {
@@ -344,7 +367,6 @@ export default function PlayerProfile() {
           <div className="profile-radar-col">
             <AttributeRadarChart
               chartMetrics={chartMetrics}
-              ratings={player.ratings}
             />
           </div>
 
@@ -358,6 +380,7 @@ export default function PlayerProfile() {
       <SubMetricBreakdown
         categories={categories}
         onChangeCategories={handleUpdateSubMetrics}
+        onOpenEditRatings={() => setIsEditRatingsOpen(true)}
       />
 
       {/* Match History & Recorded Statistics */}

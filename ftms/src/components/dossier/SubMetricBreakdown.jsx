@@ -1,4 +1,4 @@
-import { Activity, Compass, Zap, Minus, Check, X, ClipboardList } from 'lucide-react';
+import { Activity, Compass, Zap, Minus, Check, X, ClipboardList, SlidersHorizontal } from 'lucide-react';
 
 const DEFAULT_CATEGORY_ICONS = {
   physical: Activity,
@@ -9,6 +9,7 @@ const DEFAULT_CATEGORY_ICONS = {
 export default function SubMetricBreakdown({
   categories = [],
   onChangeCategories,
+  onOpenEditRatings,
 }) {
   const handleToggleChart = (catId, metricId) => {
     if (!onChangeCategories) return;
@@ -18,6 +19,49 @@ export default function SubMetricBreakdown({
         ...cat,
         metrics: cat.metrics.map((m) =>
           m.id === metricId ? { ...m, inChart: !m.inChart } : m
+        ),
+      };
+    });
+    onChangeCategories(updated);
+  };
+
+  const handleNumericChange = (catId, metricId, rawVal) => {
+    if (!onChangeCategories) return;
+    let num = parseInt(rawVal, 10);
+    if (isNaN(num)) num = '';
+    else num = Math.max(1, Math.min(99, num));
+
+    const updated = categories.map((cat) => {
+      if (cat.id !== catId) return cat;
+      const updatedMetrics = cat.metrics.map((m) =>
+        m.id === metricId ? { ...m, value: num } : m
+      );
+      const numeric = updatedMetrics.filter((m) => m.type === 'numeric');
+      let avgStr = cat.avg;
+      if (numeric.length > 0) {
+        const sum = numeric.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
+        avgStr = `${Math.round(sum / numeric.length)} AVG`;
+      }
+      return {
+        ...cat,
+        metrics: updatedMetrics,
+        avg: avgStr,
+      };
+    });
+    onChangeCategories(updated);
+  };
+
+  const handleQualitativeCycle = (catId, metricId, currentVal) => {
+    if (!onChangeCategories) return;
+    const cycle = { High: 'Med', Med: 'Low', Low: 'High' };
+    const nextVal = cycle[currentVal] || 'High';
+
+    const updated = categories.map((cat) => {
+      if (cat.id !== catId) return cat;
+      return {
+        ...cat,
+        metrics: cat.metrics.map((m) =>
+          m.id === metricId ? { ...m, value: nextVal } : m
         ),
       };
     });
@@ -54,9 +98,22 @@ export default function SubMetricBreakdown({
             Category Sub-Metric Breakdown
           </h2>
         </div>
-        <span className="submetric-calibrated-text">
-          Calibrated via Matchday Analysis Tracker
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span className="submetric-calibrated-text">
+            Calibrated via Matchday Analysis Tracker
+          </span>
+          {onOpenEditRatings && (
+            <button
+              type="button"
+              className="btn-submetric-modal-edit"
+              onClick={onOpenEditRatings}
+              title="Open full ratings editor modal"
+            >
+              <SlidersHorizontal size={13} strokeWidth={2.2} />
+              <span>Edit Ratings</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Responsive Three-Column Grid */}
@@ -117,13 +174,26 @@ export default function SubMetricBreakdown({
                     {/* Value Badge or Number */}
                     <div className="submetric-val-col">
                       {metric.type === 'numeric' ? (
-                        <span className="metric-numeric-val">{metric.value}</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="99"
+                          className="metric-numeric-input"
+                          value={metric.value}
+                          onChange={(e) => handleNumericChange(cat.id, metric.id, e.target.value)}
+                          aria-label={`${metric.name} rating value`}
+                          title="Click to edit rating (1-99)"
+                        />
                       ) : (
-                        <span
-                          className={`metric-qual-badge badge-${String(metric.value).toLowerCase()}`}
+                        <button
+                          type="button"
+                          className={`metric-qual-badge badge-${String(metric.value).toLowerCase()} clickable-qual-badge`}
+                          onClick={() => handleQualitativeCycle(cat.id, metric.id, metric.value)}
+                          title={`Current: ${metric.value}. Click to cycle High / Med / Low`}
+                          aria-label={`${metric.name}: ${metric.value}. Click to cycle.`}
                         >
                           {metric.value}
-                        </span>
+                        </button>
                       )}
                     </div>
                   </div>

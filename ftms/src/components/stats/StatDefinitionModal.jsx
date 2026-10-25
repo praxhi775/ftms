@@ -3,7 +3,7 @@ import { X, CheckCircle, Sliders, AlertCircle } from 'lucide-react';
 import { statsService } from '../../services/statsService';
 import { useModalFocusTrap } from '../../utils/useModalFocusTrap';
 
-export const STAT_CATEGORIES = [
+const STAT_CATEGORIES = [
   'Physical',
   'Tactical',
   'Technical',

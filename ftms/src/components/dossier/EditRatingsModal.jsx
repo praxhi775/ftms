@@ -80,7 +80,11 @@ export default function EditRatingsModal({
 
     // Recalculate each category's average based on numeric sub-metrics
     const updatedCategories = formData.map((cat) => {
-      const numericMetrics = cat.metrics.filter((m) => m.type === 'numeric');
+      const sanitizedMetrics = cat.metrics.map((m) => ({
+        ...m,
+        value: m.type === 'numeric' ? String(parseInt(m.value, 10) || 50) : m.value,
+      }));
+      const numericMetrics = sanitizedMetrics.filter((m) => m.type === 'numeric');
       let avgStr = cat.avg;
       if (numericMetrics.length > 0) {
         const sum = numericMetrics.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
@@ -89,6 +93,7 @@ export default function EditRatingsModal({
       }
       return {
         ...cat,
+        metrics: sanitizedMetrics,
         avg: avgStr,
       };
     });

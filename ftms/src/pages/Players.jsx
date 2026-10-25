@@ -76,7 +76,7 @@ export default function Players() {
     const injured = players.filter((p) => p.status === 'injured').length;
     const inactive = players.filter((p) => p.status === 'inactive').length;
     const avgOvr = total > 0 
-      ? Math.round(players.reduce((acc, p) => acc + calcOverall(p.ratings), 0) / total)
+      ? Math.round(players.reduce((acc, p) => acc + calcOverall(p), 0) / total)
       : 0;
     return { total, active, injured, inactive, avgOvr };
   }, [players]);
@@ -327,7 +327,7 @@ export default function Players() {
 
             {/* Player Rows: Only Player Name, Pos, OVR, Status */}
             {players.map((player) => {
-              const ovr = calcOverall(player.ratings);
+              const ovr = calcOverall(player);
 
               return (
                 <div

@@ -292,14 +292,14 @@ export default function MatchDetails() {
           if (!a || !b) return 0;
           const diff = (posOrder[a.position] || 99) - (posOrder[b.position] || 99);
           if (diff !== 0) return diff;
-          return calcOverall(b.ratings) - calcOverall(a.ratings);
+          return calcOverall(b) - calcOverall(a);
         });
       } else if (newSortBy === 'stats') {
         newIds.sort((aId, bId) => {
           const a = allPlayerMap[aId];
           const b = allPlayerMap[bId];
           if (!a || !b) return 0;
-          const diff = calcOverall(b.ratings) - calcOverall(a.ratings);
+          const diff = calcOverall(b) - calcOverall(a);
           if (diff !== 0) return diff;
           return a.name.localeCompare(b.name);
         });
@@ -321,12 +321,12 @@ export default function MatchDetails() {
       return [...list].sort((a, b) => {
         const diff = (posOrder[a.position] || 99) - (posOrder[b.position] || 99);
         if (diff !== 0) return diff;
-        return calcOverall(b.ratings) - calcOverall(a.ratings);
+        return calcOverall(b) - calcOverall(a);
       });
     }
     if (mode === 'stats') {
       return [...list].sort((a, b) => {
-        const diff = calcOverall(b.ratings) - calcOverall(a.ratings);
+        const diff = calcOverall(b) - calcOverall(a);
         if (diff !== 0) return diff;
         return a.name.localeCompare(b.name);
       });
@@ -956,9 +956,9 @@ export default function MatchDetails() {
                     <span
                       className="ovr-pill-badge"
                       style={{ fontSize: '10px', padding: '1px 6px', fontWeight: 700 }}
-                      title={`Overall Score: ${calcOverall(player.ratings)}`}
+                      title={`Overall Score: ${calcOverall(player)}`}
                     >
-                      OVR {calcOverall(player.ratings)}
+                      OVR {calcOverall(player)}
                     </span>
 
                     {player.isGuest && (
@@ -1043,7 +1043,7 @@ export default function MatchDetails() {
               const isDragTarget = dragOverTarget === teamIdx;
               const themeColor = PRESET_TEAM_COLORS[teamIdx % PRESET_TEAM_COLORS.length];
               const avgScore = teamPlayerList.length > 0
-                ? Math.round(teamPlayerList.reduce((acc, p) => acc + calcOverall(p.ratings), 0) / teamPlayerList.length)
+                ? Math.round(teamPlayerList.reduce((acc, p) => acc + calcOverall(p), 0) / teamPlayerList.length)
                 : 0;
 
               return (
@@ -1354,9 +1354,9 @@ export default function MatchDetails() {
                               <span
                                 className="ovr-pill-badge"
                                 style={{ fontSize: '10.5px', padding: '2px 7px' }}
-                                title={`Overall Score: ${calcOverall(player.ratings)}`}
+                                title={`Overall Score: ${calcOverall(player)}`}
                               >
-                                OVR {calcOverall(player.ratings)}
+                                OVR {calcOverall(player)}
                               </span>
 
                               {!isCompleted && player.isGuest && (

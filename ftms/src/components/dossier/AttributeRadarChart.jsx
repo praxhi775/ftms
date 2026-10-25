@@ -19,7 +19,7 @@ function parseMetricNumeric(val) {
   return 50;
 }
 
-export default function AttributeRadarChart({ chartMetrics = [], ratings = null }) {
+export default function AttributeRadarChart({ chartMetrics = [] }) {
   const [focusedIndex, setFocusedIndex] = useState(null);
   const badgeRefs = useRef([]);
 
@@ -27,44 +27,25 @@ export default function AttributeRadarChart({ chartMetrics = [], ratings = null 
   const cy = 180;
   const radius = 100;
 
-  // Prepare active axes based on metrics listed as "inChart: true"
+  // Prepare active axes based ONLY on metrics selected in sub-metric breakdown
   const axes = useMemo(() => {
-    if (chartMetrics && chartMetrics.length >= 3) {
-      const N = chartMetrics.length;
-      return chartMetrics.map((m, idx) => {
-        const angle = -90 + (360 / N) * idx;
-        const val = parseMetricNumeric(m.value);
-        return {
-          id: m.id || `axis-${idx}`,
-          label: m.name,
-          val: Math.max(1, Math.min(99, val)),
-          angle,
-          key: m.id || `m-${idx}`,
-        };
-      });
+    if (!chartMetrics || chartMetrics.length === 0) {
+      return [];
     }
 
-    // Fallback if chartMetrics not supplied: use legacy 6 ratings
-    if (ratings) {
-      const defaultAxes = [
-        { key: 'pac', label: 'PAC', angle: -90, val: ratings.pac || 50 },
-        { key: 'sho', label: 'SHO', angle: -30, val: ratings.sho || 50 },
-        { key: 'pas', label: 'PAS', angle: 30, val: ratings.pas || 50 },
-        { key: 'phy', label: 'PHY', angle: 90, val: ratings.phy || 50 },
-        { key: 'def', label: 'DEF', angle: 150, val: ratings.def || 50 },
-        { key: 'dri', label: 'DRI', angle: 210, val: ratings.dri || 50 },
-      ];
-      return defaultAxes.map((a, i) => ({
-        id: a.key,
-        label: a.label,
-        val: Math.max(1, Math.min(99, a.val)),
-        angle: a.angle,
-        key: a.key,
-      }));
-    }
-
-    return [];
-  }, [chartMetrics, ratings]);
+    const N = chartMetrics.length;
+    return chartMetrics.map((m, idx) => {
+      const angle = -90 + (360 / N) * idx;
+      const val = parseMetricNumeric(m.value);
+      return {
+        id: m.id || `axis-${idx}`,
+        label: m.name,
+        val: Math.max(1, Math.min(99, val)),
+        angle,
+        key: m.id || `m-${idx}`,
+      };
+    });
+  }, [chartMetrics]);
 
   // Concentric regular polygon rings with axes.length vertices
   const gridRings = useMemo(() => {
@@ -146,42 +127,69 @@ export default function AttributeRadarChart({ chartMetrics = [], ratings = null 
           </span>
         </div>
 
-        <div className="radar-legend">
-          <span className="legend-item">
-            <span className="legend-dot dot-elite"></span>
-            <span>80+ Elite</span>
-          </span>
-          <span className="legend-item">
-            <span className="legend-dot dot-solid"></span>
-            <span>60–79 Solid</span>
-          </span>
-          <span className="legend-item">
-            <span className="legend-dot dot-dev"></span>
-            <span>&lt;60 Dev</span>
-          </span>
-        </div>
+        {axes.length >= 3 && (
+          <div className="radar-legend">
+            <span className="legend-item">
+              <span className="legend-dot dot-elite"></span>
+              <span>80+ Elite</span>
+            </span>
+            <span className="legend-item">
+              <span className="legend-dot dot-solid"></span>
+              <span>60–79 Solid</span>
+            </span>
+            <span className="legend-item">
+              <span className="legend-dot dot-dev"></span>
+              <span>&lt;60 Dev</span>
+            </span>
+          </div>
+        )}
       </div>
 
-      {axes.length < 3 ? (
+      {axes.length === 0 ? (
         <div
+          className="radar-blank-state"
           style={{
+            height: '320px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '50px 20px',
+            backgroundColor: '#FAF8F4',
+            borderRadius: '14px',
+            border: '1px dashed #D8D2C5',
+            margin: '16px 0',
             textAlign: 'center',
-            backgroundColor: '#fff',
-            borderRadius: '12px',
-            border: '1px dashed #D1D5DB',
-            margin: '20px 0',
+            padding: '20px'
           }}
         >
           <p style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text-primary)' }}>
-            Polygon Chart Requires at Least 3 Active Metrics
+            No Metrics Selected
           </p>
           <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Toggle "✓ Chart" on the sub-metrics below to display them on the radar polygon.
+            Toggle "Chart" on sub-metrics below to display attributes in this chart.
+          </p>
+        </div>
+      ) : axes.length < 3 ? (
+        <div
+          style={{
+            height: '320px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '30px 20px',
+            textAlign: 'center',
+            backgroundColor: '#FAF8F4',
+            borderRadius: '14px',
+            border: '1px dashed #D8D2C5',
+            margin: '16px 0',
+          }}
+        >
+          <p style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text-primary)' }}>
+            Radar Chart Requires at Least 3 Active Metrics
+          </p>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+            Currently {axes.length} selected ({axes.map((a) => a.label).join(', ')}). Toggle "Chart" on more sub-metrics below to form a polygon.
           </p>
         </div>
       ) : (
