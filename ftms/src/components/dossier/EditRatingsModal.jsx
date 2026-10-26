@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { X, CheckCircle, SlidersHorizontal, Activity, Compass, Zap, HelpCircle } from 'lucide-react';
 import { useModalFocusTrap } from '../../utils/useModalFocusTrap';
+import { normalizeSubMetrics, clampMetric, METRIC_MIN, METRIC_MAX } from '../../utils/subMetricUtils';
 
 const CATEGORY_ICONS = {
   physical: Activity,
@@ -18,7 +19,7 @@ export default function EditRatingsModal({
 
   // Clone categories state for editing
   const [formData, setFormData] = useState(() => {
-    return categories.map((cat) => ({
+    return normalizeSubMetrics(categories).map((cat) => ({
       ...cat,
       metrics: cat.metrics.map((m) => ({ ...m })),
     }));
@@ -29,7 +30,7 @@ export default function EditRatingsModal({
   const handleNumericChange = (catId, metricId, rawVal) => {
     let num = parseInt(rawVal, 10);
     if (isNaN(num)) num = '';
-    else num = Math.max(1, Math.min(99, num));
+    else num = clampMetric(num);
 
     setFormData((prev) =>
       prev.map((cat) => {
@@ -53,23 +54,9 @@ export default function EditRatingsModal({
           metrics: cat.metrics.map((m) => {
             if (m.id !== metricId) return m;
             const current = parseInt(m.value, 10) || 50;
-            const next = Math.max(1, Math.min(99, current + delta));
+            const next = clampMetric(current + delta);
             return { ...m, value: next };
           }),
-        };
-      })
-    );
-  };
-
-  const handleQualitativeChange = (catId, metricId, val) => {
-    setFormData((prev) =>
-      prev.map((cat) => {
-        if (cat.id !== catId) return cat;
-        return {
-          ...cat,
-          metrics: cat.metrics.map((m) =>
-            m.id === metricId ? { ...m, value: val } : m
-          ),
         };
       })
     );
@@ -78,31 +65,8 @@ export default function EditRatingsModal({
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Recalculate each category's average based on numeric sub-metrics
-    const updatedCategories = formData.map((cat) => {
-      const sanitizedMetrics = cat.metrics.map((m) => ({
-        ...m,
-        value: m.type === 'numeric' ? String(parseInt(m.value, 10) || 50) : m.value,
-      }));
-      const numericMetrics = sanitizedMetrics.filter((m) => m.type === 'numeric');
-      let avgStr = cat.avg;
-      if (numericMetrics.length > 0) {
-        const sum = numericMetrics.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
-        const calculatedAvg = Math.round(sum / numericMetrics.length);
-        avgStr = `${calculatedAvg} AVG`;
-      } else if (sanitizedMetrics.length > 0) {
-        const sum = sanitizedMetrics.reduce((acc, m) => {
-          const qVal = m.value === 'High' ? 85 : m.value === 'Low' ? 45 : 65;
-          return acc + qVal;
-        }, 0);
-        avgStr = `${Math.round(sum / sanitizedMetrics.length)} AVG`;
-      }
-      return {
-        ...cat,
-        metrics: sanitizedMetrics,
-        avg: avgStr,
-      };
-    });
+    // Clamp every value to 1-100 and recalculate category averages
+    const updatedCategories = normalizeSubMetrics(formData);
 
     onSave(updatedCategories);
     onClose();
@@ -251,11 +215,11 @@ export default function EditRatingsModal({
                       )}
                     </div>
                     <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                      Type: {metric.type === 'numeric' ? 'Numeric (1–99)' : 'Qualitative'}
+                      Rating ({METRIC_MIN}–{METRIC_MAX})
                     </span>
                   </div>
 
-                  {metric.type === 'numeric' ? (
+                  {(
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <button
                         type="button"
@@ -279,8 +243,8 @@ export default function EditRatingsModal({
                       <input
                         id={`input-metric-${metric.id}`}
                         type="number"
-                        min="1"
-                        max="99"
+                        min={METRIC_MIN}
+                        max={METRIC_MAX}
                         value={metric.value}
                         onChange={(e) => handleNumericChange(currentCategory.id, metric.id, e.target.value)}
                         style={{
@@ -313,31 +277,6 @@ export default function EditRatingsModal({
                       >
                         +
                       </button>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      {['High', 'Med', 'Low'].map((opt) => {
-                        const isSelected = metric.value === opt;
-                        return (
-                          <button
-                            key={opt}
-                            type="button"
-                            onClick={() => handleQualitativeChange(currentCategory.id, metric.id, opt)}
-                            style={{
-                              padding: '5px 10px',
-                              borderRadius: '6px',
-                              border: isSelected ? '1px solid var(--forest-green)' : '1px solid #D1D5DB',
-                              backgroundColor: isSelected ? '#003B1B' : '#fff',
-                              color: isSelected ? '#fff' : 'var(--text-secondary)',
-                              fontSize: '12px',
-                              fontWeight: isSelected ? 700 : 500,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            {opt}
-                          </button>
-                        );
-                      })}
                     </div>
                   )}
                 </div>

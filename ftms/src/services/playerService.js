@@ -1,4 +1,5 @@
 import db from '../db/database';
+import { calcCategoryAvg } from '../utils/subMetricUtils';
 
 const POSITION_ORDER = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
 
@@ -200,50 +201,43 @@ export function deriveSubMetricsFromRatings(ratings = {}) {
   const def = ratings.def ?? 50;
   const phy = ratings.phy ?? 50;
 
-  const getQual = (val) => (val >= 75 ? 'High' : val >= 60 ? 'Med' : 'Low');
-
-  const physAvg = Math.round((pac + pac) / 2);
-  const tactAvg = pas;
-  const techAvg = Math.round((dri + pas + sho) / 3);
-
-  return [
+  const categories = [
     {
       id: 'physical',
       title: 'Physical',
-      avg: `${physAvg} AVG`,
       fieldType: 'Numeric',
       metrics: [
         { id: 'm1', name: 'Sprint Speed', inChart: true, value: String(pac), type: 'numeric' },
         { id: 'm2', name: 'Acceleration', inChart: true, value: String(pac), type: 'numeric' },
-        { id: 'm3', name: 'Stamina', inChart: false, value: getQual(phy), type: 'qualitative' },
-        { id: 'm4', name: 'Strength', inChart: false, value: getQual(phy), type: 'qualitative' },
+        { id: 'm3', name: 'Stamina', inChart: false, value: String(phy), type: 'numeric' },
+        { id: 'm4', name: 'Strength', inChart: false, value: String(phy), type: 'numeric' },
       ],
     },
     {
       id: 'tactical',
       title: 'Tactical',
-      avg: `${tactAvg} AVG`,
-      fieldType: 'High/Med/Low',
+      fieldType: 'Numeric',
       metrics: [
         { id: 'm5', name: 'Vision', inChart: true, value: String(pas), type: 'numeric' },
-        { id: 'm6', name: 'Positioning', inChart: false, value: getQual(def), type: 'qualitative' },
-        { id: 'm7', name: 'Decision Making', inChart: false, value: getQual(pas), type: 'qualitative' },
-        { id: 'm8', name: 'Press Resistance', inChart: false, value: getQual(def), type: 'qualitative' },
+        { id: 'm6', name: 'Positioning', inChart: false, value: String(def), type: 'numeric' },
+        { id: 'm7', name: 'Decision Making', inChart: false, value: String(pas), type: 'numeric' },
+        { id: 'm8', name: 'Press Resistance', inChart: false, value: String(def), type: 'numeric' },
       ],
     },
     {
       id: 'technical',
       title: 'Technical',
-      avg: `${techAvg} AVG`,
       fieldType: 'Numeric',
       metrics: [
         { id: 'm9', name: 'Ball Control', inChart: true, value: String(dri), type: 'numeric' },
         { id: 'm10', name: 'Short Passing', inChart: true, value: String(pas), type: 'numeric' },
         { id: 'm11', name: 'Finishing', inChart: true, value: String(sho), type: 'numeric' },
-        { id: 'm12', name: 'First Touch', inChart: false, value: getQual(dri), type: 'qualitative' },
+        { id: 'm12', name: 'First Touch', inChart: false, value: String(dri), type: 'numeric' },
       ],
     },
   ];
+
+  return categories.map((cat) => ({ ...cat, avg: calcCategoryAvg(cat.metrics) }));
 }
 
 export function deriveRatingsFromSubMetrics(categories, existingRatings = {}) {
@@ -339,12 +333,12 @@ export function deriveRatingsFromSubMetrics(categories, existingRatings = {}) {
   }
 
   const derived = {
-    pac: Math.max(1, Math.min(99, pac)),
-    sho: Math.max(1, Math.min(99, sho)),
-    pas: Math.max(1, Math.min(99, pas)),
-    dri: Math.max(1, Math.min(99, dri)),
-    def: Math.max(1, Math.min(99, def)),
-    phy: Math.max(1, Math.min(99, phy)),
+    pac: Math.max(1, Math.min(100, pac)),
+    sho: Math.max(1, Math.min(100, sho)),
+    pas: Math.max(1, Math.min(100, pas)),
+    dri: Math.max(1, Math.min(100, dri)),
+    def: Math.max(1, Math.min(100, def)),
+    phy: Math.max(1, Math.min(100, phy)),
   };
 
   // Align weighted 6-stat overall with category overall average
@@ -358,12 +352,12 @@ export function deriveRatingsFromSubMetrics(categories, existingRatings = {}) {
   const diff = targetOvr - currentCalc;
   if (diff !== 0) {
     // Adjust attributes evenly by the difference so calcOverall(derived) === targetOvr
-    derived.pac = Math.max(1, Math.min(99, derived.pac + diff));
-    derived.sho = Math.max(1, Math.min(99, derived.sho + diff));
-    derived.pas = Math.max(1, Math.min(99, derived.pas + diff));
-    derived.dri = Math.max(1, Math.min(99, derived.dri + diff));
-    derived.def = Math.max(1, Math.min(99, derived.def + diff));
-    derived.phy = Math.max(1, Math.min(99, derived.phy + diff));
+    derived.pac = Math.max(1, Math.min(100, derived.pac + diff));
+    derived.sho = Math.max(1, Math.min(100, derived.sho + diff));
+    derived.pas = Math.max(1, Math.min(100, derived.pas + diff));
+    derived.dri = Math.max(1, Math.min(100, derived.dri + diff));
+    derived.def = Math.max(1, Math.min(100, derived.def + diff));
+    derived.phy = Math.max(1, Math.min(100, derived.phy + diff));
   }
 
   return derived;

@@ -1,3 +1,4 @@
+import { calcCategoryAvg, clampMetric, METRIC_MIN, METRIC_MAX } from '../../utils/subMetricUtils';
 import { Activity, Compass, Zap, Minus, Check, X, ClipboardList, SlidersHorizontal } from 'lucide-react';
 
 const DEFAULT_CATEGORY_ICONS = {
@@ -25,49 +26,16 @@ export default function SubMetricBreakdown({
     onChangeCategories(updated);
   };
 
-  const calcCategoryAvg = (metrics) => {
-    if (!metrics || metrics.length === 0) return '50 AVG';
-    const numeric = metrics.filter((m) => m.type === 'numeric');
-    if (numeric.length > 0) {
-      const sum = numeric.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
-      return `${Math.round(sum / numeric.length)} AVG`;
-    }
-    const sum = metrics.reduce((acc, m) => {
-      const qVal = m.value === 'High' ? 85 : m.value === 'Low' ? 45 : 65;
-      return acc + qVal;
-    }, 0);
-    return `${Math.round(sum / metrics.length)} AVG`;
-  };
-
   const handleNumericChange = (catId, metricId, rawVal) => {
     if (!onChangeCategories) return;
     let num = parseInt(rawVal, 10);
     if (isNaN(num)) num = '';
-    else num = Math.max(1, Math.min(99, num));
+    else num = clampMetric(num);
 
     const updated = categories.map((cat) => {
       if (cat.id !== catId) return cat;
       const updatedMetrics = cat.metrics.map((m) =>
         m.id === metricId ? { ...m, value: num } : m
-      );
-      return {
-        ...cat,
-        metrics: updatedMetrics,
-        avg: calcCategoryAvg(updatedMetrics),
-      };
-    });
-    onChangeCategories(updated);
-  };
-
-  const handleQualitativeCycle = (catId, metricId, currentVal) => {
-    if (!onChangeCategories) return;
-    const cycle = { High: 'Med', Med: 'Low', Low: 'High' };
-    const nextVal = cycle[currentVal] || 'High';
-
-    const updated = categories.map((cat) => {
-      if (cat.id !== catId) return cat;
-      const updatedMetrics = cat.metrics.map((m) =>
-        m.id === metricId ? { ...m, value: nextVal } : m
       );
       return {
         ...cat,
@@ -176,28 +144,16 @@ export default function SubMetricBreakdown({
 
                     {/* Value Badge or Number */}
                     <div className="submetric-val-col">
-                      {metric.type === 'numeric' ? (
-                        <input
-                          type="number"
-                          min="1"
-                          max="99"
-                          className="metric-numeric-input"
-                          value={metric.value}
-                          onChange={(e) => handleNumericChange(cat.id, metric.id, e.target.value)}
-                          aria-label={`${metric.name} rating value`}
-                          title="Click to edit rating (1-99)"
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          className={`metric-qual-badge badge-${String(metric.value).toLowerCase()} clickable-qual-badge`}
-                          onClick={() => handleQualitativeCycle(cat.id, metric.id, metric.value)}
-                          title={`Current: ${metric.value}. Click to cycle High / Med / Low`}
-                          aria-label={`${metric.name}: ${metric.value}. Click to cycle.`}
-                        >
-                          {metric.value}
-                        </button>
-                      )}
+                      <input
+                        type="number"
+                        min={METRIC_MIN}
+                        max={METRIC_MAX}
+                        className="metric-numeric-input"
+                        value={metric.value}
+                        onChange={(e) => handleNumericChange(cat.id, metric.id, e.target.value)}
+                        aria-label={`${metric.name} rating value`}
+                        title={`Click to edit rating (${METRIC_MIN}-${METRIC_MAX})`}
+                      />
                     </div>
                   </div>
                 ))}

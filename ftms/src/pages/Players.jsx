@@ -22,11 +22,13 @@ export default function Players() {
   const [, startTransition] = useTransition();
 
   const urlPos = searchParams.get('position') || '';
+  const urlStatus = searchParams.get('status') || '';
 
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [positionFilter, setPositionFilter] = useState(urlPos);
+  const [statusFilter, setStatusFilter] = useState(urlStatus);
   const [sortBy, setSortBy] = useState('name');
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -44,6 +46,13 @@ export default function Players() {
       setPositionFilter(urlPos);
     }
   }, [urlPos]);
+
+  useEffect(() => {
+    if (urlStatus !== statusFilter) {
+      setStatusFilter(urlStatus);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlStatus]);
 
   const loadPlayers = async () => {
     try {
@@ -81,6 +90,11 @@ export default function Players() {
     return { total, active, injured, inactive, avgOvr };
   }, [players]);
 
+  const visiblePlayers = useMemo(
+    () => (statusFilter ? players.filter((p) => p.status === statusFilter) : players),
+    [players, statusFilter]
+  );
+
   const getStatusBadge = (status) => {
     if (status === 'injured') {
       return (
@@ -113,13 +127,21 @@ export default function Players() {
     }
   };
 
+  const updateFilterParams = (pos, status) => {
+    const params = {};
+    if (pos) params.position = pos;
+    if (status) params.status = status;
+    setSearchParams(params);
+  };
+
   const handlePositionFilterChange = (newPos) => {
     setPositionFilter(newPos);
-    if (newPos) {
-      setSearchParams({ position: newPos });
-    } else {
-      setSearchParams({});
-    }
+    updateFilterParams(newPos, statusFilter);
+  };
+
+  const handleStatusFilterChange = (newStatus) => {
+    setStatusFilter(newStatus);
+    updateFilterParams(positionFilter, newStatus);
   };
 
   return (
@@ -191,11 +213,35 @@ export default function Players() {
                 cursor: 'pointer',
               }}
             >
-              <option value="">All Positions</option>
+              <option value="">Position</option>
               <option value="GK">Goalkeepers (GK)</option>
               <option value="DEF">Defenders (DEF)</option>
               <option value="MID">Midfielders (MID)</option>
               <option value="FWD">Forwards (FWD)</option>
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Activity size={14} style={{ color: 'var(--text-muted)' }} />
+            <select
+              value={statusFilter}
+              onChange={(e) => handleStatusFilterChange(e.target.value)}
+              aria-label="Filter by status"
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border-subtle)',
+                backgroundColor: '#fff',
+                fontSize: '13px',
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="">Status</option>
+              <option value="active">Active</option>
+              <option value="injured">Injured</option>
+              <option value="inactive">Inactive</option>
             </select>
           </div>
 
@@ -281,7 +327,7 @@ export default function Players() {
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
             Loading squad roster...
           </div>
-        ) : players.length === 0 ? (
+        ) : visiblePlayers.length === 0 ? (
           <div style={{ padding: '60px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div className="empty-state-icon-circle action-sand" style={{ width: '56px', height: '56px', marginBottom: '14px' }}>
               <Users size={28} />
@@ -290,7 +336,7 @@ export default function Players() {
               No players found
             </h3>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '400px', marginBottom: '20px' }}>
-              {searchQuery || positionFilter
+              {searchQuery || positionFilter || statusFilter
                 ? 'No squad members matched your current filters. Try resetting search.'
                 : 'Your squad roster is empty. Register your first player to get started.'}
             </p>
@@ -320,13 +366,13 @@ export default function Players() {
               alignItems: 'center'
             }}>
               <span>Player Name</span>
-              <span>Pos</span>
+              <span style={{textAlign: 'center'}}>Pos</span>
               <span style={{ textAlign: 'center' }}>OVR</span>
               <span>Status</span>
             </div>
 
             {/* Player Rows: Only Player Name, Pos, OVR, Status */}
-            {players.map((player) => {
+            {visiblePlayers.map((player) => {
               const ovr = calcOverall(player);
 
               return (
@@ -353,7 +399,7 @@ export default function Players() {
                   </div>
 
                   {/* Position */}
-                  <div>
+                  <div style={{textAlign: 'center'}}>
                     <span className={`position-badge ${getPositionBadgeClass(player.position)}`} style={{ display: 'inline-block' }}>
                       {player.position}
                     </span>

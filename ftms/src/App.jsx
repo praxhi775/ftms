@@ -9,6 +9,7 @@ import MatchDetails from './pages/MatchDetails';
 import Statistics from './pages/Statistics';
 import Backup from './pages/Backup';
 import TeamGenerator from './pages/TeamGenerator';
+import BackButton from './components/layout/BackButton';
 import './App.css';
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
         {/* Main Content Area */}
         <main className="main-viewport">
           <div className="main-content-wrapper">
+            <BackButton />
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/players" element={<Players />} />

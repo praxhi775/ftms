@@ -4,7 +4,6 @@ import {
   ArrowLeft, 
   Trash2, 
   Edit3, 
-  SlidersHorizontal, 
   Calendar, 
   Trophy, 
   Award,
@@ -23,31 +22,32 @@ import PlayerTraitsPanel from '../components/dossier/PlayerTraitsPanel';
 import SubMetricBreakdown from '../components/dossier/SubMetricBreakdown';
 import EditRatingsModal from '../components/dossier/EditRatingsModal';
 import PlayerFormModal from '../components/players/PlayerFormModal';
+import { normalizeSubMetrics } from '../utils/subMetricUtils';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 
 const DEFAULT_SUBMETRICS = [
   {
     id: 'physical',
     title: 'Physical',
-    avg: '81 AVG',
+    avg: '79 AVG',
     fieldType: 'Numeric',
     metrics: [
       { id: 'm1', name: 'Sprint Speed', inChart: true, value: '84', type: 'numeric' },
       { id: 'm2', name: 'Acceleration', inChart: true, value: '80', type: 'numeric' },
-      { id: 'm3', name: 'Stamina', inChart: false, value: 'High', type: 'qualitative' },
-      { id: 'm4', name: 'Strength', inChart: false, value: 'Med', type: 'qualitative' },
+      { id: 'm3', name: 'Stamina', inChart: false, value: '82', type: 'numeric' },
+      { id: 'm4', name: 'Strength', inChart: false, value: '70', type: 'numeric' },
     ],
   },
   {
     id: 'tactical',
     title: 'Tactical',
-    avg: '80 AVG',
-    fieldType: 'High/Med/Low',
+    avg: '79 AVG',
+    fieldType: 'Numeric',
     metrics: [
       { id: 'm5', name: 'Vision', inChart: true, value: '82', type: 'numeric' },
-      { id: 'm6', name: 'Positioning', inChart: false, value: 'High', type: 'qualitative' },
-      { id: 'm7', name: 'Decision Making', inChart: false, value: 'High', type: 'qualitative' },
-      { id: 'm8', name: 'Press Resistance', inChart: false, value: 'Med', type: 'qualitative' },
+      { id: 'm6', name: 'Positioning', inChart: false, value: '84', type: 'numeric' },
+      { id: 'm7', name: 'Decision Making', inChart: false, value: '83', type: 'numeric' },
+      { id: 'm8', name: 'Press Resistance', inChart: false, value: '68', type: 'numeric' },
     ],
   },
   {
@@ -59,7 +59,7 @@ const DEFAULT_SUBMETRICS = [
       { id: 'm9', name: 'Ball Control', inChart: true, value: '86', type: 'numeric' },
       { id: 'm10', name: 'Short Passing', inChart: true, value: '81', type: 'numeric' },
       { id: 'm11', name: 'Finishing', inChart: true, value: '88', type: 'numeric' },
-      { id: 'm12', name: 'First Touch', inChart: false, value: 'High', type: 'qualitative' },
+      { id: 'm12', name: 'First Touch', inChart: false, value: '85', type: 'numeric' },
     ],
   },
 ];
@@ -93,7 +93,14 @@ export default function PlayerProfile() {
 
       // Initialize or load subMetrics
       if (data.subMetrics && Array.isArray(data.subMetrics) && data.subMetrics.length > 0) {
-        setCategories(data.subMetrics);
+        // Convert any old High/Med/Low sub-metrics to numeric 1-100
+        const normalized = normalizeSubMetrics(data.subMetrics);
+        setCategories(normalized);
+        if (JSON.stringify(normalized) !== JSON.stringify(data.subMetrics)) {
+          playerService.update(playerId, { subMetrics: normalized }).catch((err) => {
+            console.error('Failed to migrate subMetrics to numeric:', err);
+          });
+        }
       } else {
         const initialSubs = deriveSubMetricsFromRatings(data.ratings);
         setCategories(initialSubs);
@@ -160,22 +167,7 @@ export default function PlayerProfile() {
 
   const handleUpdateSubMetrics = async (newCategories) => {
     try {
-      const updatedCategories = newCategories.map((cat) => {
-        const metrics = cat.metrics || [];
-        const numeric = metrics.filter((m) => m.type === 'numeric');
-        let avgStr = cat.avg;
-        if (numeric.length > 0) {
-          const sum = numeric.reduce((acc, m) => acc + (parseInt(m.value, 10) || 50), 0);
-          avgStr = `${Math.round(sum / numeric.length)} AVG`;
-        } else if (metrics.length > 0) {
-          const sum = metrics.reduce((acc, m) => {
-            const qVal = m.value === 'High' ? 85 : m.value === 'Low' ? 45 : 65;
-            return acc + qVal;
-          }, 0);
-          avgStr = `${Math.round(sum / metrics.length)} AVG`;
-        }
-        return { ...cat, avg: avgStr };
-      });
+      const updatedCategories = normalizeSubMetrics(newCategories);
 
       const derivedRatings = deriveRatingsFromSubMetrics(updatedCategories, player?.ratings);
 
@@ -293,17 +285,6 @@ export default function PlayerProfile() {
 
           <button
             type="button"
-            className="btn-dossier-action btn-edit-ratings"
-            onClick={() => setIsEditRatingsOpen(true)}
-            aria-label="Edit Sub-Metric Ratings (Press R)"
-            title="Edit Ratings [R]"
-          >
-            <SlidersHorizontal size={15} strokeWidth={2.2} />
-            <span>Edit Ratings</span>
-          </button>
-
-          <button
-            type="button"
             className="btn-dossier-action"
             onClick={() => setIsDeleteDialogOpen(true)}
             style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
@@ -334,38 +315,6 @@ export default function PlayerProfile() {
                 OVR {ovrRating}
               </span>
             </div>
-
-            <div className="player-meta-inline">
-              <span className="meta-position-tag">
-                {player.position} • {player.preferredFoot || 'Right'} Foot
-              </span>
-              {player.age && (
-                <>
-                  <span className="meta-bullet">•</span>
-                  <span>Age {player.age}</span>
-                </>
-              )}
-              {player.height && (
-                <>
-                  <span className="meta-bullet">•</span>
-                  <span>{player.height} cm</span>
-                </>
-              )}
-              {player.weight && (
-                <>
-                  <span className="meta-bullet">•</span>
-                  <span>{player.weight} kg</span>
-                </>
-              )}
-              <span className="meta-bullet">•</span>
-              <span style={{ textTransform: 'capitalize' }}>Status: {player.status || 'Active'}</span>
-            </div>
-
-            {player.notes && (
-              <p style={{ marginTop: '8px', fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                "{player.notes}"
-              </p>
-            )}
           </div>
         </div>
 
@@ -378,7 +327,7 @@ export default function PlayerProfile() {
           </div>
 
           <div className="profile-traits-col">
-            <PlayerTraitsPanel />
+            <PlayerTraitsPanel player={player} />
           </div>
         </div>
       </section>

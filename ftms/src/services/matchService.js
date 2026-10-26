@@ -82,6 +82,38 @@ export const matchService = {
     return db.matches.update(targetId, updateObj);
   },
 
+  // ---- Match activity log (goals, fouls) ----
+  // Stored on the match record as `events`. Allowed on completed matches too,
+  // so records can be added or corrected after the final whistle.
+  async addEvent(id, event) {
+    const numId = Number(id);
+    const targetId = isNaN(numId) ? id : numId;
+    const match = await db.matches.get(targetId);
+    if (!match) throw new Error('Match not found.');
+    if (!event.playerId) throw new Error('Please select a player.');
+    if (!['goal', 'foul'].includes(event.type)) throw new Error('Invalid activity type.');
+
+    const newEvent = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type: event.type,
+      playerId: event.playerId,
+      minute: event.minute === '' || event.minute == null ? null : Number(event.minute),
+      createdAt: new Date().toISOString(),
+    };
+    await db.matches.update(targetId, { events: [...(match.events || []), newEvent] });
+    return newEvent;
+  },
+
+  async removeEvent(id, eventId) {
+    const numId = Number(id);
+    const targetId = isNaN(numId) ? id : numId;
+    const match = await db.matches.get(targetId);
+    if (!match) throw new Error('Match not found.');
+    return db.matches.update(targetId, {
+      events: (match.events || []).filter((e) => e.id !== eventId),
+    });
+  },
+
   async remove(id) {
     const numId = Number(id);
     const targetId = isNaN(numId) ? id : numId;

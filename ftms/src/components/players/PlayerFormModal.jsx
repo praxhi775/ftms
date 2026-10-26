@@ -11,6 +11,9 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
     age: '',
     position: 'MID',
     preferredFoot: 'Right',
+    weakFoot: 'Med',
+    skillMoves: 'Med',
+    reputation: 'Med',
     height: '',
     weight: '',
     notes: '',
@@ -27,6 +30,9 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
         age: playerToEdit.age != null ? String(playerToEdit.age) : '',
         position: playerToEdit.position || 'MID',
         preferredFoot: playerToEdit.preferredFoot || 'Right',
+        weakFoot: playerToEdit.weakFoot || 'Med',
+        skillMoves: playerToEdit.skillMoves || 'Med',
+        reputation: playerToEdit.reputation || 'Med',
         height: playerToEdit.height != null ? String(playerToEdit.height) : '',
         weight: playerToEdit.weight != null ? String(playerToEdit.weight) : '',
         notes: playerToEdit.notes || '',
@@ -39,6 +45,9 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
         age: '',
         position: 'MID',
         preferredFoot: 'Right',
+        weakFoot: 'Med',
+        skillMoves: 'Med',
+        reputation: 'Med',
         height: '',
         weight: '',
         notes: '',
@@ -85,6 +94,9 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
         age: formData.age ? Number(formData.age) : null,
         position: formData.position,
         preferredFoot: formData.preferredFoot,
+        weakFoot: formData.weakFoot,
+        skillMoves: formData.skillMoves,
+        reputation: formData.reputation,
         height: formData.height ? Number(formData.height) : null,
         weight: formData.weight ? Number(formData.weight) : null,
         notes: formData.notes.trim(),
@@ -325,6 +337,72 @@ export default function PlayerFormModal({ isOpen, onClose, onPlayerSaved, player
                 <option value="active">Active</option>
                 <option value="injured">Injured</option>
                 <option value="inactive">Inactive / Away</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Player Traits (shown on the profile's Traits panel) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginTop: '12px' }}>
+            <div className="rating-input-field">
+              <label className="rating-field-label">Weak Foot Ability</label>
+              <select
+                value={formData.weakFoot}
+                onChange={(e) => setFormData({ ...formData, weakFoot: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-strong)',
+                  fontFamily: 'inherit',
+                  fontSize: '14px',
+                  backgroundColor: '#fff'
+                }}
+              >
+                <option value="High">High</option>
+                <option value="Med">Med</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+
+            <div className="rating-input-field">
+              <label className="rating-field-label">Skill Moves</label>
+              <select
+                value={formData.skillMoves}
+                onChange={(e) => setFormData({ ...formData, skillMoves: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-strong)',
+                  fontFamily: 'inherit',
+                  fontSize: '14px',
+                  backgroundColor: '#fff'
+                }}
+              >
+                <option value="High">High</option>
+                <option value="Med">Med</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+
+            <div className="rating-input-field">
+              <label className="rating-field-label">Reputation Index</label>
+              <select
+                value={formData.reputation}
+                onChange={(e) => setFormData({ ...formData, reputation: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-strong)',
+                  fontFamily: 'inherit',
+                  fontSize: '14px',
+                  backgroundColor: '#fff'
+                }}
+              >
+                <option value="High">High</option>
+                <option value="Med">Med</option>
+                <option value="Low">Low</option>
               </select>
             </div>
           </div>

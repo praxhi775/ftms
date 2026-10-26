@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, CheckCircle, PlusCircle, AlertCircle } from 'lucide-react';
 import { useModalFocusTrap } from '../../utils/useModalFocusTrap';
+import { clampMetric, METRIC_MIN, METRIC_MAX } from '../../utils/subMetricUtils';
 
 export default function AddCustomMetricModal({
   isOpen,
@@ -13,7 +14,6 @@ export default function AddCustomMetricModal({
 
   const [selectedCatId, setSelectedCatId] = useState(initialCategoryId);
   const [metricName, setMetricName] = useState('');
-  const [fieldType, setFieldType] = useState('numeric'); // 'numeric' | 'qualitative'
   const [initialValue, setInitialValue] = useState('80');
   const [inChart, setInChart] = useState(true);
   const [error, setError] = useState('');
@@ -22,7 +22,6 @@ export default function AddCustomMetricModal({
     if (isOpen) {
       setSelectedCatId(initialCategoryId);
       setMetricName('');
-      setFieldType('numeric');
       setInitialValue('80');
       setInChart(true);
       setError('');
@@ -46,9 +45,9 @@ export default function AddCustomMetricModal({
     onAddMetric({
       categoryId: selectedCatId,
       name: metricName.trim(),
-      type: fieldType,
-      value: fieldType === 'numeric' ? String(parseInt(initialValue, 10) || 80) : initialValue,
-      inChart: inChart && fieldType === 'numeric',
+      type: 'numeric',
+      value: String(clampMetric(initialValue, 80)),
+      inChart,
     });
 
     onClose();
@@ -166,87 +165,31 @@ export default function AddCustomMetricModal({
             />
           </div>
 
-          {/* Field Type */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div className="rating-input-field">
-              <label htmlFor="custom-metric-type" className="rating-field-label">
-                Field Type
-              </label>
-              <select
-                id="custom-metric-type"
-                value={fieldType}
-                onChange={(e) => {
-                  const newType = e.target.value;
-                  setFieldType(newType);
-                  if (newType === 'numeric') {
-                    setInitialValue('80');
-                    setInChart(true);
-                  } else {
-                    setInitialValue('High');
-                    setInChart(false);
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-strong, #D1D5DB)',
-                  backgroundColor: '#fff',
-                  fontSize: '13.5px',
-                  fontFamily: 'inherit',
-                }}
-              >
-                <option value="numeric">Numeric Rating (1–99)</option>
-                <option value="qualitative">High / Med / Low</option>
-              </select>
-            </div>
-
-            <div className="rating-input-field">
-              <label htmlFor="custom-metric-initial-val" className="rating-field-label">
-                Initial Value
-              </label>
-              {fieldType === 'numeric' ? (
-                <input
-                  id="custom-metric-initial-val"
-                  type="number"
-                  min="1"
-                  max="99"
-                  value={initialValue}
-                  onChange={(e) => setInitialValue(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border-strong, #D1D5DB)',
-                    fontSize: '13.5px',
-                    fontFamily: 'inherit',
-                  }}
-                />
-              ) : (
-                <select
-                  id="custom-metric-initial-val"
-                  value={initialValue}
-                  onChange={(e) => setInitialValue(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border-strong, #D1D5DB)',
-                    backgroundColor: '#fff',
-                    fontSize: '13.5px',
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  <option value="High">High</option>
-                  <option value="Med">Med</option>
-                  <option value="Low">Low</option>
-                </select>
-              )}
-            </div>
+          {/* Initial Value (all sub-metrics are numeric 1-100) */}
+          <div className="rating-input-field">
+            <label htmlFor="custom-metric-initial-val" className="rating-field-label">
+              Initial Value ({METRIC_MIN}–{METRIC_MAX})
+            </label>
+            <input
+              id="custom-metric-initial-val"
+              type="number"
+              min={METRIC_MIN}
+              max={METRIC_MAX}
+              value={initialValue}
+              onChange={(e) => setInitialValue(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border-strong, #D1D5DB)',
+                fontSize: '13.5px',
+                fontFamily: 'inherit',
+              }}
+            />
           </div>
 
           {/* Include in Polygon Chart */}
-          {fieldType === 'numeric' && (
+          {(
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
               <input
                 type="checkbox"

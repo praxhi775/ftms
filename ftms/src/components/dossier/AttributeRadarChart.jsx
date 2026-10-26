@@ -40,7 +40,7 @@ export default function AttributeRadarChart({ chartMetrics = [] }) {
       return {
         id: m.id || `axis-${idx}`,
         label: m.name,
-        val: Math.max(1, Math.min(99, val)),
+        val: Math.max(1, Math.min(100, val)),
         angle,
         key: m.id || `m-${idx}`,
       };
@@ -295,7 +295,7 @@ export default function AttributeRadarChart({ chartMetrics = [] }) {
 
       {/* Normalization Baseline Caption */}
       <p className="radar-baseline-caption">
-        Radial normalized dynamically against calibrated squad baselines (1–99).
+        Radial normalized dynamically against calibrated squad baselines (1–100).
       </p>
     </div>
   );

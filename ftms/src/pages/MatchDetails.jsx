@@ -19,7 +19,8 @@ import {
   Sparkles,
   RotateCcw,
   Edit2,
-  Lock
+  Lock,
+  Activity
 } from 'lucide-react';
 import { matchService } from '../services/matchService';
 import { playerService, calcOverall } from '../services/playerService';
@@ -27,6 +28,8 @@ import { statsService } from '../services/statsService';
 import { generateTeams, movePlayer, swapPlayers } from '../services/teamService';
 import MatchFormModal from '../components/matches/MatchFormModal';
 import RecordStatsModal from '../components/matches/RecordStatsModal';
+import RecordActivityModal from '../components/matches/RecordActivityModal';
+import { ACTIVITY_TYPES } from '../components/matches/activityTypes';
 import GuestPlayerModal from '../components/matches/GuestPlayerModal';
 import TeamFormModal from '../components/matches/TeamFormModal';
 import ConfirmDialog from '../components/common/ConfirmDialog';
@@ -66,6 +69,7 @@ export default function MatchDetails() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isRecordStatsOpen, setIsRecordStatsOpen] = useState(false);
+  const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [isAddGuestOpen, setIsAddGuestOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [editingTeamIdx, setEditingTeamIdx] = useState(null);
@@ -526,6 +530,22 @@ export default function MatchDetails() {
     }
   };
 
+  const handleSaveActivity = async (event) => {
+    await matchService.addEvent(match.id, event);
+    await loadMatchData();
+    showToast(`${ACTIVITY_TYPES[event.type].label} recorded.`);
+  };
+
+  const handleRemoveActivity = async (eventId) => {
+    try {
+      await matchService.removeEvent(match.id, eventId);
+      await loadMatchData();
+      showToast('Activity removed.');
+    } catch (err) {
+      showToast(err.message || 'Failed to remove activity');
+    }
+  };
+
   const handleDeleteMatch = async () => {
     if (isCompleted) {
       showToast('Completed matches cannot be deleted.');
@@ -582,6 +602,16 @@ export default function MatchDetails() {
         </nav>
 
         <div className="dossier-header-actions" style={{ display: 'flex', gap: '8px' }}>
+          <button
+            type="button"
+            className="btn-dossier-action btn-export-sheet"
+            onClick={() => setIsActivityOpen(true)}
+            title="Record a goal or foul"
+          >
+            <Activity size={15} />
+            <span>Record Activity</span>
+          </button>
+
           {match.status === 'upcoming' ? (
             <button
               type="button"
@@ -690,6 +720,106 @@ export default function MatchDetails() {
           </p>
         )}
       </section>
+
+      {/* Match Activity Log (goals & fouls) */}
+      {(() => {
+        const events = [...(match.events || [])].sort((a, b) => {
+          const am = a.minute ?? Infinity;
+          const bm = b.minute ?? Infinity;
+          if (am !== bm) return am - bm;
+          return new Date(a.createdAt) - new Date(b.createdAt);
+        });
+        const teamOfPlayer = {};
+        teams.forEach((t, idx) => {
+          (t.playerIds || []).forEach((pid) => {
+            teamOfPlayer[pid] = t.name || `Team ${String.fromCharCode(65 + idx)}`;
+          });
+        });
+        const goals = events.filter((e) => e.type === 'goal');
+        const fouls = events.filter((e) => e.type === 'foul');
+        const goalsByTeam = {};
+        goals.forEach((e) => {
+          const t = teamOfPlayer[e.playerId];
+          if (t) goalsByTeam[t] = (goalsByTeam[t] || 0) + 1;
+        });
+
+        return (
+          <section style={{ backgroundColor: '#fff', borderRadius: '18px', border: '1px solid var(--border-subtle)', padding: '22px 24px', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Activity size={18} style={{ color: 'var(--forest-green)' }} />
+                  <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>Match Activity</h2>
+                </div>
+                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  Goals and fouls recorded for this match.
+                </p>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, backgroundColor: ACTIVITY_TYPES.goal.bg, color: ACTIVITY_TYPES.goal.color }}>
+                  {goals.length} {goals.length === 1 ? 'Goal' : 'Goals'}
+                </span>
+                <span style={{ padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, backgroundColor: ACTIVITY_TYPES.foul.bg, color: ACTIVITY_TYPES.foul.color }}>
+                  {fouls.length} {fouls.length === 1 ? 'Foul' : 'Fouls'}
+                </span>
+              </div>
+            </div>
+
+            {Object.keys(goalsByTeam).length > 0 && (
+              <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                Goals by team: {Object.entries(goalsByTeam).map(([t, n]) => `${t} ${n}`).join(' · ')}
+              </p>
+            )}
+
+            {events.length === 0 ? (
+              <div style={{ padding: '22px', textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)', backgroundColor: 'var(--bg-subtle)', borderRadius: '12px' }}>
+                No activity recorded yet. Use <strong>Record Activity</strong> to log a goal or foul.
+              </div>
+            ) : (
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {events.map((ev) => {
+                  const cfg = ACTIVITY_TYPES[ev.type] || ACTIVITY_TYPES.goal;
+                  const Icon = cfg.icon;
+                  const player = allPlayerMap[ev.playerId];
+                  return (
+                    <li
+                      key={ev.id}
+                      style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', border: '1px solid var(--border-subtle)', borderRadius: '10px', backgroundColor: 'var(--bg-subtle)' }}
+                    >
+                      <span style={{ minWidth: '38px', textAlign: 'center', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>
+                        {ev.minute != null ? `${ev.minute}'` : '—'}
+                      </span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 9px', borderRadius: '999px', fontSize: '11.5px', fontWeight: 700, backgroundColor: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
+                        <Icon size={12} strokeWidth={2.4} />
+                        {cfg.label}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <strong style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>
+                          {player ? player.name : 'Unknown player'}
+                        </strong>
+                        {teamOfPlayer[ev.playerId] && (
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: '8px' }}>
+                            {teamOfPlayer[ev.playerId]}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveActivity(ev.id)}
+                        aria-label={`Remove ${cfg.label} by ${player ? player.name : 'player'}`}
+                        title="Remove"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', display: 'inline-flex', padding: '4px' }}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        );
+      })()}
 
       {/* Team Builder Card (Manual Creation + Guest Players + Drag & Drop) */}
       <section style={{ backgroundColor: '#fff', borderRadius: '18px', border: '1px solid var(--border-subtle)', padding: '22px 24px', boxShadow: 'var(--shadow-sm)' }}>
@@ -1462,6 +1592,18 @@ export default function MatchDetails() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Record Activity Modal (goal / foul) */}
+      {isActivityOpen && (
+        <RecordActivityModal
+          isOpen={isActivityOpen}
+          match={match}
+          players={[...squadPlayers, ...guestPlayers.map((g) => ({ ...g, isGuest: true }))]}
+          teams={teams}
+          onClose={() => setIsActivityOpen(false)}
+          onSave={handleSaveActivity}
+        />
       )}
 
       {/* Record Stats Modal */}
