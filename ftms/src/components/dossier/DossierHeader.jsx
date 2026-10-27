@@ -2,15 +2,9 @@ import { Share2, SlidersHorizontal } from 'lucide-react';
 
 export default function DossierHeader({ onEditRatings, onExportSheet }) {
   return (
-    <header className="dossier-header-bar">
-      {/* Breadcrumb Context */}
-      <nav className="dossier-breadcrumb" aria-label="Breadcrumb">
-        <span className="breadcrumb-root">Squad Roster</span>
-        <span className="breadcrumb-separator">/</span>
-        <span className="breadcrumb-sub">Forward Line</span>
-        <span className="breadcrumb-separator">/</span>
-        <span className="breadcrumb-current">#11 Vance</span>
-      </nav>
+    <header className="dossier-header-bar" style={{ justifyContent: 'flex-end' }}>
+      
+    
 
       {/* Action Buttons */}
       <div className="dossier-header-actions">

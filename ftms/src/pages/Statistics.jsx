@@ -9,7 +9,14 @@ import {
   Trophy, 
   Users, 
   Calendar, 
-  PieChart as PieIcon 
+  PieChart as PieIcon,
+  Activity,
+  Compass,
+  Zap,
+  Minus,
+  Check,
+  X,
+  ClipboardList
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -28,6 +35,12 @@ import { playerService } from '../services/playerService';
 import { matchService } from '../services/matchService';
 import StatDefinitionModal from '../components/stats/StatDefinitionModal';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+
+const STAT_CATEGORY_GROUPS = [
+  { id: 'physical', title: 'Physical', icon: Activity },
+  { id: 'tactical', title: 'Tactical', icon: Compass },
+  { id: 'technical', title: 'Technical', icon: Zap },
+];
 
 export default function Statistics() {
   const [statDefs, setStatDefs] = useState([]);
@@ -49,6 +62,7 @@ export default function Statistics() {
   const loadAllData = async () => {
     try {
       setLoading(true);
+      await statsService.syncProfileDefinitions();
       const [defs, charts, pCount, upCount, compCount, goals] = await Promise.all([
         statsService.getAllDefinitions(),
         statsService.getChartData(),
@@ -98,6 +112,22 @@ export default function Statistics() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // Toggle whether a statistic appears in the performance charts
+  const handleToggleChart = async (def) => {
+    const nextValue = !(def.inChart === 1 || def.inChart === true);
+    setStatDefs((prev) =>
+      prev.map((d) => (d.id === def.id ? { ...d, inChart: nextValue ? 1 : 0 } : d))
+    );
+    try {
+      await statsService.updateDefinition(def.id, { inChart: nextValue });
+      const charts = await statsService.getChartData();
+      setChartDataList(charts);
+    } catch (err) {
+      showToast(err.message || 'Failed to update chart setting');
+      loadAllData();
+    }
+  };
+
   const handleDeleteDef = async () => {
     try {
       await statsService.removeDefinition(defToDelete.id);
@@ -127,19 +157,6 @@ export default function Statistics() {
               Live squad ledger metrics, custom trackable dimensions, and player comparison charts.
             </p>
           </div>
-
-          <button
-            type="button"
-            className="btn-import-backup"
-            onClick={() => {
-              setDefToEdit(null);
-              setIsAddDefOpen(true);
-            }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-          >
-            <Plus size={16} />
-            <span>New Custom Stat</span>
-          </button>
         </div>
 
         {/* Live Metrics Grid */}
@@ -315,112 +332,159 @@ export default function Statistics() {
         )}
       </section>
 
-      {/* Custom Statistic Definitions Manager */}
-      <section style={{ backgroundColor: '#fff', borderRadius: '18px', border: '1px solid var(--border-subtle)', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <div>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Custom Statistic Definitions
-            </h2>
-            <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-              Create and calibrate trackable metrics for post-match player evaluation.
-            </p>
-          </div>
+      {/* Custom Statistic Definitions Manager (same layout as the sub-metric breakdown) */}
+      {(() => {
+        const norm = (v) => (v || '').trim().toLowerCase();
+        const groups = STAT_CATEGORY_GROUPS.map((g) => ({
+          ...g,
+          defs: statDefs.filter((d) => norm(d.category) === g.id),
+        }));
+        const otherDefs = statDefs.filter(
+          (d) => !STAT_CATEGORY_GROUPS.some((g) => g.id === norm(d.category))
+        );
+        if (otherDefs.length > 0) {
+          groups.push({ id: 'other', title: 'Other', icon: ClipboardList, defs: otherDefs });
+        }
 
-          <button
-            type="button"
-            className="btn-import-backup"
-            onClick={() => {
-              setDefToEdit(null);
-              setIsAddDefOpen(true);
-            }}
-          >
-            <Plus size={14} />
-            <span>Add Dimension</span>
-          </button>
-        </div>
-
-        {statDefs.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            No stat definitions configured.
-          </p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {statDefs.map((def) => (
-              <div
-                key={def.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px 16px',
-                  borderRadius: '10px',
-                  backgroundColor: 'var(--bg-subtle)',
-                  border: '1px solid var(--border-subtle)',
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>
-                      {def.name}
-                    </strong>
-                    {def.category && (
-                      <span className="badge badge-sand" style={{ fontSize: '10px', fontWeight: 700 }}>
-                        {def.category}
-                      </span>
-                    )}
-                    <span className="badge badge-peach" style={{ fontSize: '10px', textTransform: 'capitalize' }}>
-                      {def.type}
-                    </span>
-                    {def.unit && (
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        Unit: {def.unit}
-                      </span>
-                    )}
-                    {def.inChart === 1 && (
-                      <span className="badge badge-green" style={{ fontSize: '10px' }}>
-                        In Charts
-                      </span>
-                    )}
-                  </div>
-                  {def.description && (
-                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                      {def.description}
-                    </p>
-                  )}
-                  {def.type === 'qualitative' && def.choices?.length > 0 && (
-                    <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      Options: {def.choices.join(', ')}
-                    </p>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDefToEdit(def);
-                      setIsAddDefOpen(true);
-                    }}
-                    style={{ padding: '6px', borderRadius: '6px', color: 'var(--forest-green)', cursor: 'pointer' }}
-                    title="Edit definition"
-                  >
-                    <Edit3 size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDefToDelete(def)}
-                    style={{ padding: '6px', borderRadius: '6px', color: '#DC2626', cursor: 'pointer' }}
-                    title="Delete definition"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
+        return (
+          <section className="submetric-section-card" aria-labelledby="stat-defs-heading">
+            <div className="submetric-section-header">
+              <div className="submetric-title-group">
+                <ClipboardList size={18} className="submetric-icon" strokeWidth={2.4} />
+                <h2 id="stat-defs-heading" className="submetric-main-title">
+                  Custom Statistic Definitions
+                </h2>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span className="submetric-calibrated-text">
+                  Trackable metrics for post-match player evaluation
+                </span>
+                <button
+                  type="button"
+                  className="btn-import-backup"
+                  onClick={() => {
+                    setDefToEdit(null);
+                    setIsAddDefOpen(true);
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>Add Dimension</span>
+                </button>
+              </div>
+            </div>
+
+            {statDefs.length === 0 ? (
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                No stat definitions configured.
+              </p>
+            ) : (
+              <div className="submetric-columns-grid">
+                {groups.map((group) => {
+                  const Icon = group.icon;
+                  return (
+                    <article key={group.id} className="category-metric-card" aria-labelledby={`stat-cat-${group.id}`}>
+                      <div className="category-card-top">
+                        <div className="category-title-row">
+                          <Icon size={16} strokeWidth={2.2} className="cat-icon" />
+                          <h3 id={`stat-cat-${group.id}`} className="category-name">{group.title}</h3>
+                        </div>
+                        <span className="category-avg-badge">
+                          {group.defs.length} {group.defs.length === 1 ? 'STAT' : 'STATS'}
+                        </span>
+                      </div>
+
+                      <div className="metric-rows-list" role="list">
+                        {group.defs.length === 0 && (
+                          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                            No statistics in this category yet.
+                          </p>
+                        )}
+                        {group.defs.map((def) => {
+                          const inChart = def.inChart === 1 || def.inChart === true;
+                          const meta =
+                            def.type === 'quantitative'
+                              ? def.aggregate === 'average'
+                                ? 'Match rating · 1-100'
+                                : `Quantitative${def.unit ? ` · ${def.unit}` : ''}`
+                              : `Qualitative · ${(def.choices || []).length} options`;
+                          const tooltip = [
+                            def.description,
+                            def.type === 'qualitative' && def.choices?.length > 0
+                              ? `Options: ${def.choices.join(', ')}`
+                              : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' — ');
+
+                          return (
+                            <div key={def.id} className="submetric-row" role="listitem">
+                              {/* Remove */}
+                              <button
+                                type="button"
+                                className="btn-remove-metric"
+                                onClick={() => setDefToDelete(def)}
+                                aria-label={`Delete ${def.name}`}
+                                title="Delete definition"
+                              >
+                                <Minus size={12} strokeWidth={2.5} />
+                              </button>
+
+                              {/* Name + type */}
+                              <div style={{ flex: 1, minWidth: 0 }} title={tooltip || undefined}>
+                                <span className="submetric-name" style={{ display: 'block' }}>
+                                  {def.name}
+                                </span>
+                                <span style={{ display: 'block', fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                                  {meta}
+                                </span>
+                              </div>
+
+                              {/* Chart / Off toggle */}
+                              <button
+                                type="button"
+                                className={`btn-chart-toggle ${inChart ? 'chart-active' : 'chart-off'}`}
+                                onClick={() => handleToggleChart(def)}
+                                aria-label={`${def.name} charts: ${inChart ? 'Chart active' : 'Off'}. Press to toggle.`}
+                                aria-pressed={inChart}
+                              >
+                                {inChart ? (
+                                  <>
+                                    <Check size={11} strokeWidth={3} />
+                                    <span>Chart</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <X size={11} strokeWidth={2.5} />
+                                    <span>Off</span>
+                                  </>
+                                )}
+                              </button>
+
+                              {/* Edit */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDefToEdit(def);
+                                  setIsAddDefOpen(true);
+                                }}
+                                style={{ padding: '4px', borderRadius: '6px', color: 'var(--forest-green)', cursor: 'pointer', display: 'inline-flex' }}
+                                aria-label={`Edit ${def.name}`}
+                                title="Edit definition"
+                              >
+                                <Edit3 size={14} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        );
+      })()}
 
       {/* Add / Edit Definition Modal */}
       <StatDefinitionModal

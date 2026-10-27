@@ -1,6 +1,71 @@
 import db from '../db/database';
 
+// The same sub-metrics that appear on every player profile, as per-match statistics.
+const STAT_CATEGORIES = ['Physical', 'Tactical', 'Technical'];
+
+const PROFILE_STAT_FIELDS = [
+  { name: 'Sprint Speed', category: 'Physical' },
+  { name: 'Acceleration', category: 'Physical' },
+  { name: 'Stamina', category: 'Physical' },
+  { name: 'Strength', category: 'Physical' },
+  { name: 'Agility', category: 'Physical' },
+  { name: 'Vision', category: 'Tactical' },
+  { name: 'Positioning', category: 'Tactical' },
+  { name: 'Decision Making', category: 'Tactical' },
+  { name: 'Press Resistance', category: 'Tactical' },
+  { name: 'Ball Control', category: 'Technical' },
+  { name: 'Short Passing', category: 'Technical' },
+  { name: 'Finishing', category: 'Technical' },
+  { name: 'First Touch', category: 'Technical' },
+];
+
+// Where the original built-in stats belong
+const KNOWN_STAT_CATEGORIES = {
+  goals: 'Technical',
+  assists: 'Tactical',
+  'pass accuracy': 'Technical',
+  positioning: 'Tactical',
+  'first touch': 'Technical',
+};
+
 export const statsService = {
+  // One-time setup: puts every stat in Physical / Tactical / Technical and adds the
+  // profile sub-metrics as match ratings (1-100, averaged). Runs once, so anything
+  // you delete afterwards stays deleted.
+  async syncProfileDefinitions() {
+    const flag = await db.settings.get('profileStatDefsSynced');
+    if (flag) return false;
+
+    await db.transaction('rw', [db.statDefinitions, db.settings], async () => {
+      const defs = await db.statDefinitions.toArray();
+      const existing = new Set(defs.map((d) => (d.name || '').trim().toLowerCase()));
+
+      for (const def of defs) {
+        const known = KNOWN_STAT_CATEGORIES[(def.name || '').trim().toLowerCase()];
+        if (known && !STAT_CATEGORIES.includes(def.category)) {
+          await db.statDefinitions.update(def.id, { category: known });
+        }
+      }
+
+      for (const field of PROFILE_STAT_FIELDS) {
+        if (existing.has(field.name.toLowerCase())) continue;
+        await db.statDefinitions.add({
+          name: field.name,
+          description: `Match rating for ${field.name.toLowerCase()} (1-100)`,
+          category: field.category,
+          type: 'quantitative',
+          unit: '',
+          inChart: 0,
+          choices: [],
+          aggregate: 'average',
+        });
+      }
+
+      await db.settings.put({ key: 'profileStatDefsSynced', value: true });
+    });
+    return true;
+  },
+
   // ---- Stat Definitions ----
   async getAllDefinitions() {
     return db.statDefinitions.toArray();
@@ -145,10 +210,16 @@ export const statsService = {
           playerTotals[s.playerId] += Number(s.value) || 0;
         });
 
+        const playerCounts = {};
+        defStats.forEach((s) => {
+          playerCounts[s.playerId] = (playerCounts[s.playerId] || 0) + 1;
+        });
+        const useAverage = def.aggregate === 'average';
+
         const barData = Object.entries(playerTotals)
           .map(([pid, total]) => ({
             name: playerMap[Number(pid)]?.name || 'Unknown',
-            value: total,
+            value: useAverage ? Math.round((total / (playerCounts[pid] || 1)) * 10) / 10 : total,
           }))
           .sort((a, b) => b.value - a.value)
           .slice(0, 10);

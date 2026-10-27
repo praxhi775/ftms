@@ -425,8 +425,11 @@ export default function PlayerProfile() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {Object.entries(playerStatsSummary).map(([name, item]) => {
                 const isQuantitative = item.def.type === 'quantitative';
+                const valueSum = item.values.reduce((sum, v) => sum + (Number(v.value) || 0), 0);
                 const totalOrAvg = isQuantitative
-                  ? `${item.values.reduce((sum, v) => sum + (Number(v.value) || 0), 0)} ${item.def.unit || ''}`.trim()
+                  ? item.def.aggregate === 'average'
+                    ? `${Math.round((valueSum / (item.values.length || 1)) * 10) / 10} avg`
+                    : `${valueSum} ${item.def.unit || ''}`.trim()
                   : `${item.values.length} entries`;
 
                 return (
