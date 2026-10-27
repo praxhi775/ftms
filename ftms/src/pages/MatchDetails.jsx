@@ -513,6 +513,23 @@ export default function MatchDetails() {
     showToast(`Player moved to ${dest}.`);
   };
 
+  // Goals recorded via Record Activity, counted per team (Team A = home, Team B = away)
+  const recordedGoals = (() => {
+    const counts = [0, 0];
+    (match?.events || []).forEach((ev) => {
+      if (ev.type !== 'goal') return;
+      const idx = teams.findIndex((t) => (t.playerIds || []).includes(ev.playerId));
+      if (idx === 0 || idx === 1) counts[idx] += 1;
+    });
+    return { home: counts[0], away: counts[1] };
+  })();
+
+  const openScoreModal = () => {
+    setScoreHome(recordedGoals.home);
+    setScoreAway(recordedGoals.away);
+    setIsScoreModalOpen(true);
+  };
+
   const handleCompleteMatch = async (e) => {
     e.preventDefault();
     try {
@@ -616,7 +633,7 @@ export default function MatchDetails() {
             <button
               type="button"
               className="btn-dossier-action btn-edit-ratings"
-              onClick={() => setIsScoreModalOpen(true)}
+              onClick={openScoreModal}
             >
               <CheckCircle size={15} />
               <span>Complete Match</span>
@@ -1553,12 +1570,16 @@ export default function MatchDetails() {
         <div className="modal-overlay-backdrop" role="dialog" aria-modal="true">
           <div className="modal-content-card" style={{ maxWidth: '400px' }}>
             <h2 className="modal-heading" style={{ marginBottom: '8px' }}>Log Final Match Score</h2>
-            <p className="modal-description">Enter final result to mark fixture completed.</p>
+            <p className="modal-description">
+              {recordedGoals.home + recordedGoals.away > 0
+                ? 'Score is pre-filled from the goals recorded in Match Activity. You can adjust it before confirming.'
+                : 'Enter final result to mark fixture completed.'}
+            </p>
 
             <form onSubmit={handleCompleteMatch}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', margin: '16px 0' }}>
                 <div className="rating-input-field">
-                  <label className="rating-field-label">Home / Team A</label>
+                  <label className="rating-field-label">{teams[0]?.name || 'Home / Team A'}</label>
                   <input
                     type="number"
                     min="0"
@@ -1569,7 +1590,7 @@ export default function MatchDetails() {
                   />
                 </div>
                 <div className="rating-input-field">
-                  <label className="rating-field-label">Away / Team B</label>
+                  <label className="rating-field-label">{teams[1]?.name || 'Away / Team B'}</label>
                   <input
                     type="number"
                     min="0"

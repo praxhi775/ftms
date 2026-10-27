@@ -2472,6 +2472,12 @@
   color: #9A3412;
 }
 
+.trait-value-text {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
 .trait-badge.badge-low {
   background-color: #E2E8F0;
   color: #475569;

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { X, CheckCircle, Activity } from 'lucide-react';
 import { useModalFocusTrap } from '../../utils/useModalFocusTrap';
 import { ACTIVITY_TYPES } from './activityTypes';
+import SearchablePlayerSelect from './SearchablePlayerSelect';
 
 export default function RecordActivityModal({
   isOpen,
@@ -11,7 +12,7 @@ export default function RecordActivityModal({
   teams = [],
   onSave,
 }) {
-  const modalRef = useModalFocusTrap({ isOpen, onClose, initialFocusSelector: 'select' });
+  const modalRef = useModalFocusTrap({ isOpen, onClose, initialFocusSelector: 'input[role="combobox"]' });
 
   const [type, setType] = useState('goal');
   const [playerId, setPlayerId] = useState('');
@@ -147,25 +148,12 @@ export default function RecordActivityModal({
           {/* Player */}
           <div className="rating-input-field">
             <label htmlFor="activity-player" className="rating-field-label">Player</label>
-            <select
-              id="activity-player"
+            <SearchablePlayerSelect
+              groups={groups}
               value={playerId}
-              onChange={(e) => setPlayerId(e.target.value)}
-              style={{ ...fieldStyle, cursor: 'pointer' }}
-              required
-            >
-              <option value="">Select player…</option>
-              {groups.map((g) => (
-                <optgroup key={g.label} label={g.label}>
-                  {g.members.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.jerseyNumber != null && p.jerseyNumber !== '' ? `#${p.jerseyNumber} ` : ''}{p.name}
-                      {p.isGuest ? ' (Guest)' : ''}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+              onChange={setPlayerId}
+              placeholder="Search by name or jersey #…"
+            />
           </div>
 
           {/* Minute */}

@@ -315,6 +315,11 @@ export default function PlayerProfile() {
                 OVR {ovrRating}
               </span>
             </div>
+            {player.age !== undefined && player.age !== null && player.age !== '' && (
+            <p style={{ marginTop: '4px', fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>
+            Age {player.age}
+            </p>
+              )}
           </div>
         </div>
 

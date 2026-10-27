@@ -59,9 +59,12 @@ export default function PlayerTraitsPanel({ player }) {
     return <span className="foot-pill foot-secondary">{side}</span>;
   };
 
+
   return (
     <div className="player-traits-stack">
-      {/* Card 1: Preferred Foot */}
+      
+
+      {/* Card 0: Preferred Foot */}
       <article className="trait-card">
         <div className="trait-top-row">
           <span className="trait-label">Preferred Foot</span>
@@ -73,7 +76,7 @@ export default function PlayerTraitsPanel({ player }) {
         {isBoth && <p className="trait-detail-text">Comfortable with both feet</p>}
       </article>
 
-      {/* Card 2: Weak Foot Ability */}
+      {/* Card 1: Weak Foot Ability */}
       <article className="trait-card">
         <div className="trait-top-row">
           <span className="trait-label">Weak Foot Ability</span>
@@ -82,7 +85,7 @@ export default function PlayerTraitsPanel({ player }) {
         <p className="trait-detail-text">{weakFootDetail}</p>
       </article>
 
-      {/* Card 3: Skill Moves */}
+      {/* Card 2: Skill Moves */}
       <article className="trait-card">
         <div className="trait-top-row">
           <span className="trait-label">Skill Moves</span>
@@ -91,7 +94,7 @@ export default function PlayerTraitsPanel({ player }) {
         <p className="trait-detail-text">1v1 Dribbling repertoire</p>
       </article>
 
-      {/* Card 4: Reputation Index */}
+      {/* Card 3: Reputation Index */}
       <article className="trait-card">
         <div className="trait-top-row">
           <span className="trait-label">Reputation Index</span>
