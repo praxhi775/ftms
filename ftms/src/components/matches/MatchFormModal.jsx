@@ -8,7 +8,6 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
   const modalRef = useModalFocusTrap({ isOpen, onClose, initialFocusSelector: '#match-title-input' });
   const [formData, setFormData] = useState({
     title: '',
-    opponent: '',
     date: new Date().toISOString().split('T')[0],
     time: '09:30',
     venue: 'North Training Pitch',
@@ -41,7 +40,6 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
     if (matchToEdit) {
       setFormData({
         title: matchToEdit.title || '',
-        opponent: matchToEdit.opponent || '',
         date: matchToEdit.date || new Date().toISOString().split('T')[0],
         time: matchToEdit.time || '09:30',
         venue: matchToEdit.venue || 'North Training Pitch',
@@ -52,7 +50,6 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
     } else {
       setFormData({
         title: 'Sunday Scrimmage',
-        opponent: 'Internal Squad Match',
         date: new Date().toISOString().split('T')[0],
         time: '09:30',
         venue: 'North Training Pitch',
@@ -109,7 +106,6 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
 
       const payload = {
         title: formData.title.trim(),
-        opponent: formData.opponent.trim(),
         date: formData.date,
         time: formData.time,
         venue: formData.venue.trim(),
@@ -185,7 +181,7 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', gap: '14px' }}>
           {/* Form Fields Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
             <div className="rating-input-field">
               <label className="rating-field-label">Match Title *</label>
               <input
@@ -196,24 +192,6 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
                 placeholder="e.g. Sunday Scrimmage #15"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-strong)',
-                  fontFamily: 'inherit',
-                  fontSize: '13.5px',
-                }}
-              />
-            </div>
-
-            <div className="rating-input-field">
-              <label className="rating-field-label">Opponent / Format</label>
-              <input
-                type="text"
-                placeholder="e.g. Internal Squad 7v7"
-                value={formData.opponent}
-                onChange={(e) => setFormData({ ...formData, opponent: e.target.value })}
                 style={{
                   width: '100%',
                   padding: '8px 12px',

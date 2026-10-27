@@ -22,7 +22,6 @@ export default function CreateMatchFromTeamsModal({
 
   const [formData, setFormData] = useState({
     title: defaultTitle,
-    opponent: 'Internal Squad Match',
     date: new Date().toISOString().split('T')[0],
     time: '09:30',
     venue: 'North Training Pitch',
@@ -56,7 +55,6 @@ export default function CreateMatchFromTeamsModal({
 
     setFormData({
       title,
-      opponent: 'Internal Squad Match',
       date: new Date().toISOString().split('T')[0],
       time: '09:30',
       venue: 'North Training Pitch',
@@ -92,7 +90,6 @@ export default function CreateMatchFromTeamsModal({
 
         const newMatchId = await matchService.add({
           title: formData.title.trim(),
-          opponent: formData.opponent.trim(),
           date: formData.date,
           time: formData.time,
           venue: formData.venue.trim(),

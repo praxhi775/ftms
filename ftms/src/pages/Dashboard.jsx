@@ -65,7 +65,7 @@ export default function Dashboard() {
               Welcome back, Coach
             </h1>
             <p className="hero-subtitle">
-              Tactical board is synced, rosters are prepped ({totalPlayers} registered), and pitch is cleared.
+              Tactical board is synced, rosters are prepped, and pitch is cleared.
             </p>
           </div>
           
@@ -105,9 +105,11 @@ export default function Dashboard() {
               </h2>
             </div>
 
+            {nextMatch && <p className="session-match-name">{nextMatch.title}</p>}
+
             <p className="card-description session-description">
               {nextMatch
-                ? `${nextMatch.title}${nextMatch.opponent ? ` vs ${nextMatch.opponent}` : ''} • ${nextMatch.selectedPlayerIds?.length || 0} players selected.`
+                ? `${nextMatch.selectedPlayerIds?.length || 0} players selected.`
                 : 'Schedule your next training scrimmage or match to generate balanced teams.'}
             </p>
 

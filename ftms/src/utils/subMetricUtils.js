@@ -33,3 +33,25 @@ export function normalizeSubMetrics(categories = []) {
     };
   });
 }
+
+// Adds the "Agility" sub-metric to the Physical category for players saved before it existed.
+// Its starting value is the category's current average, so the player's overall doesn't change.
+export function ensureAgilityMetric(categories = []) {
+  return categories.map((cat) => {
+    const isPhysical = cat.id === 'physical' || (cat.title || '').toLowerCase() === 'physical';
+    if (!isPhysical) return cat;
+    const metrics = cat.metrics || [];
+    if (metrics.some((m) => (m.name || '').toLowerCase() === 'agility')) return cat;
+
+    const nums = metrics.map((m) => parseInt(m.value, 10)).filter((n) => !isNaN(n));
+    const startValue = nums.length > 0 ? Math.round(nums.reduce((a, b) => a + b, 0) / nums.length) : 50;
+
+    return {
+      ...cat,
+      metrics: [
+        ...metrics,
+        { id: 'm13', name: 'Agility', inChart: false, value: String(clampMetric(startValue)), type: 'numeric' },
+      ],
+    };
+  });
+}

@@ -43,7 +43,6 @@ export async function seedDatabase() {
     // Create sample completed matches
     const match1Id = await db.matches.add({
       title: 'Sunday Scrimmage #12',
-      opponent: 'Internal Match',
       date: '2024-09-15',
       time: '09:30',
       venue: 'North Training Pitch',
@@ -61,7 +60,6 @@ export async function seedDatabase() {
 
     const match2Id = await db.matches.add({
       title: 'Sunday Scrimmage #13',
-      opponent: 'Internal Match',
       date: '2024-09-22',
       time: '10:00',
       venue: 'South Field',
@@ -82,7 +80,6 @@ export async function seedDatabase() {
     futureDate.setDate(futureDate.getDate() + 3);
     await db.matches.add({
       title: 'Sunday Scrimmage #14',
-      opponent: 'Internal Match',
       date: futureDate.toISOString().split('T')[0],
       time: '09:30',
       venue: 'North Training Pitch',

@@ -22,7 +22,7 @@ import PlayerTraitsPanel from '../components/dossier/PlayerTraitsPanel';
 import SubMetricBreakdown from '../components/dossier/SubMetricBreakdown';
 import EditRatingsModal from '../components/dossier/EditRatingsModal';
 import PlayerFormModal from '../components/players/PlayerFormModal';
-import { normalizeSubMetrics } from '../utils/subMetricUtils';
+import { normalizeSubMetrics, ensureAgilityMetric } from '../utils/subMetricUtils';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 
 const DEFAULT_SUBMETRICS = [
@@ -36,6 +36,7 @@ const DEFAULT_SUBMETRICS = [
       { id: 'm2', name: 'Acceleration', inChart: true, value: '80', type: 'numeric' },
       { id: 'm3', name: 'Stamina', inChart: false, value: '82', type: 'numeric' },
       { id: 'm4', name: 'Strength', inChart: false, value: '70', type: 'numeric' },
+      { id: 'm13', name: 'Agility', inChart: false, value: '78', type: 'numeric' },
     ],
   },
   {
@@ -93,8 +94,8 @@ export default function PlayerProfile() {
 
       // Initialize or load subMetrics
       if (data.subMetrics && Array.isArray(data.subMetrics) && data.subMetrics.length > 0) {
-        // Convert any old High/Med/Low sub-metrics to numeric 1-100
-        const normalized = normalizeSubMetrics(data.subMetrics);
+        // Convert any old High/Med/Low sub-metrics to numeric 1-100 and add Agility if missing
+        const normalized = normalizeSubMetrics(ensureAgilityMetric(data.subMetrics));
         setCategories(normalized);
         if (JSON.stringify(normalized) !== JSON.stringify(data.subMetrics)) {
           playerService.update(playerId, { subMetrics: normalized }).catch((err) => {
@@ -316,10 +317,10 @@ export default function PlayerProfile() {
               </span>
             </div>
             {player.age !== undefined && player.age !== null && player.age !== '' && (
-            <p style={{ marginTop: '4px', fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>
-            Age {player.age}
-            </p>
-              )}
+              <p style={{ marginTop: '4px', fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                Age {player.age}
+              </p>
+            )}
           </div>
         </div>
 

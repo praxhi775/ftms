@@ -689,9 +689,6 @@ export default function MatchDetails() {
             <h1 className="hero-title" style={{ fontSize: '26px' }}>
               {match.title}
             </h1>
-            <p className="hero-subtitle">
-              {match.opponent ? `Fixture vs ${match.opponent}` : 'Internal Squad Friendly'}
-            </p>
           </div>
 
           {match.status === 'completed' && match.score && (

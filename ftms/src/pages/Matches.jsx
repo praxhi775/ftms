@@ -263,14 +263,11 @@ export default function Matches() {
                     )}
                   </div>
 
-                  {/* Title & Opponent */}
+                  {/* Title */}
                   <div>
                     <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
                       {match.title}
                     </h3>
-                    <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-                      {match.opponent ? `vs ${match.opponent}` : 'Internal Scrimmage'}
-                    </p>
                   </div>
 
                   {/* Score if completed */}

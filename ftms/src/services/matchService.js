@@ -33,7 +33,6 @@ export const matchService = {
 
     return db.matches.add({
       title: match.title.trim(),
-      opponent: match.opponent?.trim() || '',
       date: match.date,
       time: match.time || '',
       venue: match.venue?.trim() || '',

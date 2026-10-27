@@ -420,6 +420,15 @@
   color: #475C51;
 }
 
+/* Match name on the dashboard's next-session card */
+.session-match-name {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--forest-green);
+  margin: 4px 0 8px;
+}
+
 .directive-description {
   color: var(--peach-text);
 }

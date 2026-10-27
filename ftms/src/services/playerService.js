@@ -211,6 +211,7 @@ export function deriveSubMetricsFromRatings(ratings = {}) {
         { id: 'm2', name: 'Acceleration', inChart: true, value: String(pac), type: 'numeric' },
         { id: 'm3', name: 'Stamina', inChart: false, value: String(phy), type: 'numeric' },
         { id: 'm4', name: 'Strength', inChart: false, value: String(phy), type: 'numeric' },
+        { id: 'm13', name: 'Agility', inChart: false, value: String(pac), type: 'numeric' },
       ],
     },
     {
