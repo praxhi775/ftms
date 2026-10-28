@@ -154,6 +154,17 @@ export default function MatchDetails() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Lets the Back button return to the matching Matches tab (Upcoming / Completed),
+  // also right after this match gets completed.
+  useEffect(() => {
+    if (!match?.status) return;
+    try {
+      sessionStorage.setItem('ftms.matchesTab', match.status === 'completed' ? 'completed' : 'upcoming');
+    } catch {
+      /* storage unavailable: ignore */
+    }
+  }, [match?.status]);
+
   // Combined Player Lookup (Regular squad members + Guest players)
   const allPlayerMap = {};
   squadPlayers.forEach((p) => {
@@ -543,11 +554,33 @@ export default function MatchDetails() {
   const hasSessions = sessions.length > 0;
   const teamName = (tid) => teams.find((t) => t.id === tid)?.name || 'Removed team';
 
+  // Recording is only possible while the match is open and (with sessions) at least one
+  // session is not completed yet.
+  const openSessions = sessions.filter((x) => x.status !== 'completed');
+  const canRecordActivity = !isCompleted && (!hasSessions || openSessions.length > 0);
+  const recordDisabledReason = isCompleted
+    ? 'Activity cannot be recorded for a completed match'
+    : hasSessions && openSessions.length === 0
+      ? 'All sessions are completed'
+      : 'Record a goal or foul';
+
   const openActivity = (sessionId = '') => {
+    if (!canRecordActivity) {
+      showToast(recordDisabledReason + '.');
+      return;
+    }
     // default to the active session when recording from the header button
-    const fallback = sessions.find((x) => x.status === 'active')?.id || '';
-    setActivitySessionId(sessionId || fallback);
+    const fallback = openSessions.find((x) => x.status === 'active')?.id || '';
+    const requested = openSessions.some((x) => x.id === sessionId) ? sessionId : '';
+    setActivitySessionId(requested || fallback);
     setIsActivityOpen(true);
+  };
+
+  // An entry is locked once its session (or the whole match) is completed
+  const isEventLocked = (ev) => {
+    if (isCompleted) return true;
+    const session = sessions.find((x) => x.id === ev.sessionId);
+    return !!session && session.status === 'completed';
   };
 
   const handleSaveSession = async ({ name, teamAId, teamBId }) => {
@@ -705,7 +738,9 @@ export default function MatchDetails() {
             type="button"
             className="btn-dossier-action btn-export-sheet"
             onClick={() => openActivity()}
-            title="Record a goal or foul"
+            disabled={!canRecordActivity}
+            title={recordDisabledReason}
+            style={canRecordActivity ? undefined : { opacity: 0.5, cursor: 'not-allowed' }}
           >
             <Activity size={15} />
             <span>Record Activity</span>
@@ -961,9 +996,17 @@ export default function MatchDetails() {
                       <button
                         type="button"
                         onClick={() => handleRemoveActivity(ev.id)}
+                        disabled={isEventLocked(ev)}
                         aria-label={`Remove ${cfg.label} by ${player ? player.name : 'player'}`}
-                        title="Remove"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626', display: 'inline-flex', padding: '4px' }}
+                        title={isEventLocked(ev) ? 'Locked: this session or match is completed' : 'Remove'}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: isEventLocked(ev) ? 'not-allowed' : 'pointer',
+                          color: isEventLocked(ev) ? '#D1D5DB' : '#DC2626',
+                          display: 'inline-flex',
+                          padding: '4px',
+                        }}
                       >
                         <Trash2 size={15} />
                       </button>
@@ -1830,7 +1873,7 @@ export default function MatchDetails() {
           match={match}
           players={[...squadPlayers, ...guestPlayers.map((g) => ({ ...g, isGuest: true }))]}
           teams={teams}
-          sessions={sessions}
+          sessions={openSessions}
           defaultSessionId={activitySessionId}
           onClose={() => setIsActivityOpen(false)}
           onSave={handleSaveActivity}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Trophy, 
   Calendar, 
@@ -19,7 +19,14 @@ export default function Matches() {
   const navigate = useNavigate();
 
   const [matches, setMatches] = useState([]);
-  const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming' | 'completed'
+  // The selected tab is kept in the URL (?tab=completed). Switching tabs is a normal
+  // history step, so Back walks back through them: match -> Completed -> Upcoming -> previous page.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') === 'completed' ? 'completed' : 'upcoming';
+  const setActiveTab = (tab) => {
+    if (tab === activeTab) return;
+    setSearchParams(tab === 'completed' ? { tab: 'completed' } : {});
+  };
   const [loading, setLoading] = useState(true);
   const [isNewMatchOpen, setIsNewMatchOpen] = useState(false);
   const [matchToDelete, setMatchToDelete] = useState(null);

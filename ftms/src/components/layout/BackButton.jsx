@@ -8,41 +8,84 @@ const HIDDEN_ON = ['/', '/teams', '/team-generator'];
 // The page "above" the current one
 function getParentPath(pathname) {
   if (pathname.startsWith('/players/')) return '/players';
-  if (pathname.startsWith('/matches/')) return '/matches';
+  if (pathname.startsWith('/matches/')) {
+    let tab = null;
+    try {
+      tab = sessionStorage.getItem('ftms.matchesTab');
+    } catch {
+      /* storage unavailable: ignore */
+    }
+    return tab === 'completed' ? '/matches?tab=completed' : '/matches';
+  }
   return '/';
 }
 
 export default function BackButton() {
   const navigate = useNavigate();
   const navigationType = useNavigationType();
-  const { pathname, key } = useLocation();
+  const { pathname, search, key } = useLocation();
+  const fullPath = pathname + search;
 
-  // Remember where we came from and how we got here
-  const currentPathRef = useRef(null);
-  const arrivalRef = useRef({ from: null, type: 'POP' });
+  // Our own record of the history stack for this visit (one entry per router history entry),
+  // so we always know which page is right before the current one, even after going back.
+  const historyRef = useRef({ entries: [], index: -1 });
 
   useEffect(() => {
-    arrivalRef.current = { from: currentPathRef.current, type: navigationType };
-    currentPathRef.current = pathname;
+    const h = historyRef.current;
+    const entry = { key, path: fullPath };
+
+    if (navigationType === 'PUSH') {
+      h.entries = h.entries.slice(0, h.index + 1);
+      h.entries.push(entry);
+      h.index = h.entries.length - 1;
+    } else if (navigationType === 'REPLACE') {
+      if (h.index < 0) {
+        h.entries = [entry];
+        h.index = 0;
+      } else {
+        h.entries[h.index] = entry;
+      }
+    } else {
+      // POP: browser back/forward, our own back, or the very first page load
+      const idx = h.entries.findIndex((e) => e.key === key);
+      if (idx >= 0) {
+        h.index = idx;
+        h.entries[idx] = entry;
+      } else {
+        h.entries = [entry];
+        h.index = 0;
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
   if (HIDDEN_ON.includes(pathname)) return null;
 
   const handleBack = () => {
-    const { from, type } = arrivalRef.current;
+    const h = historyRef.current;
+    const previous = h.index > 0 ? h.entries[h.index - 1] : null;
+    const parent = getParentPath(pathname);
 
-    // We arrived by a normal link/click from a different page: that page is the
-    // entry right before this one in history, so going back is safe.
-    if (type === 'PUSH' && from && from !== pathname) {
+    // A match always goes back to the Matches list on the right tab (Upcoming / Completed),
+    // no matter where it was opened from (Dashboard, player profile, a link...).
+    if (pathname.startsWith('/matches/')) {
+      if (previous && previous.path === parent) {
+        navigate(-1); // came straight from that list: keeps its scroll position
+      } else {
+        navigate(parent, { replace: true });
+      }
+      return;
+    }
+
+    // There is a different page right before this one in our own record: go back to it.
+    if (previous && previous.path !== fullPath) {
       navigate(-1);
       return;
     }
 
-    // Page was opened directly, refreshed, reached by replace (e.g. after deleting
-    // something), or via the browser buttons: history can't be trusted, so go to the
-    // parent page and replace this entry instead of stacking more routes.
-    navigate(getParentPath(pathname), { replace: true });
+    // Opened directly, refreshed, or the entry before is unknown / the same page (e.g. after a
+    // delete): go up to the parent page, replacing this entry so routes don't pile up.
+    navigate(parent, { replace: true });
   };
 
   return (

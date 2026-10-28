@@ -83,18 +83,25 @@ export const matchService = {
   },
 
   // ---- Match activity log (goals, fouls) ----
-  // Stored on the match record as `events`. Allowed on completed matches too,
-  // so records can be added or corrected after the final whistle.
+  // Stored on the match record as `events`. Recording and removing are locked once
+  // the match, or the session the entry belongs to, is completed.
   async addEvent(id, event) {
     const numId = Number(id);
     const targetId = isNaN(numId) ? id : numId;
     const match = await db.matches.get(targetId);
     if (!match) throw new Error('Match not found.');
+    if (match.status === 'completed') {
+      throw new Error('Activity cannot be recorded for a completed match.');
+    }
     if (!event.playerId) throw new Error('Please select a player.');
     if (!['goal', 'foul'].includes(event.type)) throw new Error('Invalid activity type.');
 
-    if (event.sessionId && !(match.sessions || []).some((s) => s.id === event.sessionId)) {
-      throw new Error('Session not found.');
+    if (event.sessionId) {
+      const session = (match.sessions || []).find((s) => s.id === event.sessionId);
+      if (!session) throw new Error('Session not found.');
+      if (session.status === 'completed') {
+        throw new Error(`"${session.name}" is completed. Activity can no longer be recorded for it.`);
+      }
     }
 
     const newEvent = {
@@ -115,6 +122,14 @@ export const matchService = {
     const targetId = isNaN(numId) ? id : numId;
     const match = await db.matches.get(targetId);
     if (!match) throw new Error('Match not found.');
+    if (match.status === 'completed') {
+      throw new Error('Activity cannot be deleted from a completed match.');
+    }
+    const event = (match.events || []).find((e) => e.id === eventId);
+    const session = event?.sessionId ? (match.sessions || []).find((s) => s.id === event.sessionId) : null;
+    if (session && session.status === 'completed') {
+      throw new Error(`"${session.name}" is completed. Its activity can no longer be deleted.`);
+    }
     return db.matches.update(targetId, {
       events: (match.events || []).filter((e) => e.id !== eventId),
     });

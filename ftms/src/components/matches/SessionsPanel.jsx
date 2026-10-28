@@ -131,10 +131,21 @@ export default function SessionsPanel({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                       <button
                         type="button"
-                        style={{ ...iconBtn, color: 'var(--forest-green)' }}
+                        style={{
+                          ...iconBtn,
+                          color: matchCompleted || session.status === 'completed' ? '#D1D5DB' : 'var(--forest-green)',
+                          cursor: matchCompleted || session.status === 'completed' ? 'not-allowed' : 'pointer',
+                        }}
                         onClick={() => onRecordActivity(session.id)}
+                        disabled={matchCompleted || session.status === 'completed'}
                         aria-label={`Record activity for ${session.name}`}
-                        title="Record goal / foul"
+                        title={
+                          matchCompleted
+                            ? 'Match is completed'
+                            : session.status === 'completed'
+                              ? 'Session is completed'
+                              : 'Record goal / foul'
+                        }
                       >
                         <Activity size={16} />
                       </button>
