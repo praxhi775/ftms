@@ -353,7 +353,7 @@ export default function TeamGenerator() {
     } catch (e) {
       console.error(e);
     }
-    navigate(`/matches/${matchId}`);
+    navigate(`/matches/${matchId}`, { replace: true });
   };
 
   if (loading) {

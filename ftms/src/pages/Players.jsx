@@ -1,4 +1,4 @@
-import { useState, useEffect, useTransition, useMemo } from 'react';
+import { useState, useEffect, useTransition, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Users, 
@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { playerService, calcOverall } from '../services/playerService';
 import PlayerFormModal from '../components/players/PlayerFormModal';
+import PlayerContextMenu from '../components/players/PlayerContextMenu';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 
 export default function Players() {
   const navigate = useNavigate();
@@ -33,6 +35,12 @@ export default function Players() {
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+
+  // Right-click menu state
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, player }
+  const [playerToEdit, setPlayerToEdit] = useState(null);
+  const [playerToDelete, setPlayerToDelete] = useState(null);
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
   useEffect(() => {
     document.title = 'Squad Roster | Team Manager';
@@ -76,6 +84,19 @@ export default function Players() {
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleDeletePlayer = async () => {
+    if (!playerToDelete) return;
+    try {
+      await playerService.remove(playerToDelete.id);
+      showToast(`${playerToDelete.name} removed from squad.`);
+      setPlayerToDelete(null);
+      loadPlayers();
+    } catch (err) {
+      showToast(err.message || 'Failed to delete player');
+      setPlayerToDelete(null);
+    }
   };
 
   // Squad Summary Metrics
@@ -213,7 +234,7 @@ export default function Players() {
                 cursor: 'pointer',
               }}
             >
-              <option value="">Position</option>
+              <option value="">All Positions</option>
               <option value="GK">Goalkeepers (GK)</option>
               <option value="DEF">Defenders (DEF)</option>
               <option value="MID">Midfielders (MID)</option>
@@ -238,7 +259,7 @@ export default function Players() {
                 cursor: 'pointer',
               }}
             >
-              <option value="">Status</option>
+              <option value="">All Statuses</option>
               <option value="active">Active</option>
               <option value="injured">Injured</option>
               <option value="inactive">Inactive</option>
@@ -366,7 +387,7 @@ export default function Players() {
               alignItems: 'center'
             }}>
               <span>Player Name</span>
-              <span style={{textAlign: 'center'}}>Pos</span>
+              <span style={{ textAlign: 'center' }}>Pos</span>
               <span style={{ textAlign: 'center' }}>OVR</span>
               <span>Status</span>
             </div>
@@ -379,6 +400,10 @@ export default function Players() {
                 <div
                   key={player.id}
                   onClick={() => navigate(`/players/${player.id}`)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setContextMenu({ x: e.clientX, y: e.clientY, player });
+                  }}
                   style={{
                     display: 'grid',
                     gridTemplateColumns: '2fr 110px 110px 130px',
@@ -399,7 +424,7 @@ export default function Players() {
                   </div>
 
                   {/* Position */}
-                  <div style={{textAlign: 'center'}}>
+                  <div style={{ textAlign: 'center' }}>
                     <span className={`position-badge ${getPositionBadgeClass(player.position)}`} style={{ display: 'inline-block' }}>
                       {player.position}
                     </span>
@@ -422,6 +447,37 @@ export default function Players() {
           </div>
         )}
       </section>
+
+      {/* Right-click menu */}
+      <PlayerContextMenu
+        menu={contextMenu}
+        onClose={closeContextMenu}
+        onView={(p) => navigate(`/players/${p.id}`)}
+        onEdit={(p) => setPlayerToEdit(p)}
+        onDelete={(p) => setPlayerToDelete(p)}
+      />
+
+      {/* Edit Player Modal (opened from the right-click menu) */}
+      <PlayerFormModal
+        isOpen={!!playerToEdit}
+        playerToEdit={playerToEdit}
+        onClose={() => setPlayerToEdit(null)}
+        onPlayerSaved={() => {
+          loadPlayers();
+          showToast('Player profile updated.');
+        }}
+      />
+
+      {/* Delete confirmation (opened from the right-click menu) */}
+      <ConfirmDialog
+        isOpen={!!playerToDelete}
+        title="Delete Player Dossier"
+        message={playerToDelete ? `Are you sure you want to remove ${playerToDelete.name} (#${playerToDelete.jerseyNumber}) from your squad? Historical match records will preserve their presence.` : ''}
+        confirmLabel="Delete Player"
+        confirmVariant="danger"
+        onCancel={() => setPlayerToDelete(null)}
+        onConfirm={handleDeletePlayer}
+      />
 
       {/* Add Player Modal */}
       <PlayerFormModal

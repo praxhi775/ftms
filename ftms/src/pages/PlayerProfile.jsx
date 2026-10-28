@@ -194,7 +194,8 @@ export default function PlayerProfile() {
   const handleDeletePlayer = async () => {
     try {
       await playerService.remove(player.id);
-      navigate('/players');
+      // replace: the deleted profile must not stay in the history stack
+      navigate('/players', { replace: true });
     } catch (err) {
       showToast(err.message || 'Failed to delete player');
       setIsDeleteDialogOpen(false);
@@ -259,19 +260,7 @@ export default function PlayerProfile() {
       )}
 
       {/* Breadcrumbs & Action Bar */}
-      <header className="dossier-header-bar">
-        <nav className="dossier-breadcrumb" aria-label="Breadcrumb">
-          <Link to="/players" className="breadcrumb-root" style={{ color: 'var(--forest-green)', textDecoration: 'none', fontWeight: 600 }}>
-            Squad Roster
-          </Link>
-          <span className="breadcrumb-separator">/</span>
-          <Link to={`/players?position=${player.position}`} className="breadcrumb-sub" style={{ textDecoration: 'none', color: 'inherit' }}>
-            {player.position}
-          </Link>
-          <span className="breadcrumb-separator">/</span>
-          <span className="breadcrumb-current">#{player.jerseyNumber} {player.name}</span>
-        </nav>
-
+      <header className="dossier-header-bar" style={{ justifyContent: 'flex-end' }}>
         <div className="dossier-header-actions" style={{ display: 'flex', gap: '10px' }}>
           <button
             type="button"

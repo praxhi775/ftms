@@ -571,7 +571,8 @@ export default function MatchDetails() {
     }
     try {
       await matchService.remove(match.id);
-      navigate('/matches');
+      // replace: the deleted match must not stay in the history stack
+      navigate('/matches', { replace: true });
     } catch (err) {
       showToast(err.message || 'Failed to delete match');
       setIsDeleteModalOpen(false);
