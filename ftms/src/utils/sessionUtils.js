@@ -19,6 +19,17 @@ export function teamIdOfPlayer(teams = [], playerId) {
   return team ? team.id : null;
 }
 
+// The team an activity entry belongs to: the team saved with the entry when it was recorded,
+// so moving a player to another team later doesn't change old entries. Entries recorded before
+// teams had ids fall back to the player's current team.
+export function eventTeam(event, teams = []) {
+  if (event.teamId) {
+    const saved = teams.find((t) => t.id === event.teamId);
+    if (saved) return saved;
+  }
+  return teams.find((t) => (t.playerIds || []).includes(event.playerId)) || null;
+}
+
 // Goals scored in a session by each of its two teams, from the activity log
 export function sessionGoals(session, events = [], teams = []) {
   let a = 0;

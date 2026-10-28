@@ -36,7 +36,7 @@ import ConfirmDialog from '../components/common/ConfirmDialog';
 import SessionsPanel from '../components/matches/SessionsPanel';
 import SessionFormModal from '../components/matches/SessionFormModal';
 import SessionScoreModal from '../components/matches/SessionScoreModal';
-import { newTeamId, sessionGoals, computeStandings } from '../utils/sessionUtils';
+import { newTeamId, sessionGoals, computeStandings, eventTeam } from '../utils/sessionUtils';
 
 const PRESET_TEAM_COLORS = [
   { name: 'Team Green', bg: '#003B1B', light: '#ECFDF5', border: '#A7F3D0', text: '#003B1B' },
@@ -631,7 +631,8 @@ export default function MatchDetails() {
     const counts = [0, 0];
     (match?.events || []).forEach((ev) => {
       if (ev.type !== 'goal') return;
-      const idx = teams.findIndex((t) => (t.playerIds || []).includes(ev.playerId));
+      const owner = eventTeam(ev, teams);
+      const idx = owner ? teams.indexOf(owner) : -1;
       if (idx === 0 || idx === 1) counts[idx] += 1;
     });
     return { home: counts[0], away: counts[1] };
@@ -898,17 +899,16 @@ export default function MatchDetails() {
           if (am !== bm) return am - bm;
           return new Date(a.createdAt) - new Date(b.createdAt);
         });
-        const teamOfPlayer = {};
-        teams.forEach((t, idx) => {
-          (t.playerIds || []).forEach((pid) => {
-            teamOfPlayer[pid] = t.name || `Team ${String.fromCharCode(65 + idx)}`;
-          });
-        });
+        // team name saved with each entry (not the player's current team)
+        const teamNameOfEvent = (ev) => {
+          const t = eventTeam(ev, teams);
+          return t ? t.name || `Team ${String.fromCharCode(65 + teams.indexOf(t))}` : null;
+        };
         const goals = events.filter((e) => e.type === 'goal');
         const fouls = events.filter((e) => e.type === 'foul');
         const goalsByTeam = {};
         goals.forEach((e) => {
-          const t = teamOfPlayer[e.playerId];
+          const t = teamNameOfEvent(e);
           if (t) goalsByTeam[t] = (goalsByTeam[t] || 0) + 1;
         });
 
@@ -982,9 +982,9 @@ export default function MatchDetails() {
                         <strong style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>
                           {player ? player.name : 'Unknown player'}
                         </strong>
-                        {teamOfPlayer[ev.playerId] && (
+                        {teamNameOfEvent(ev) && (
                           <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: '8px' }}>
-                            {teamOfPlayer[ev.playerId]}
+                            {teamNameOfEvent(ev)}
                           </span>
                         )}
                         {ev.sessionId && (
