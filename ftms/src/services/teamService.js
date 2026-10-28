@@ -1,3 +1,5 @@
+import { newTeamId } from '../utils/sessionUtils';
+
 /**
  * Randomly distribute players into N teams as evenly as possible.
  * Preserves existing team names and colors if provided.
@@ -19,6 +21,7 @@ export function generateTeams(playerIds, numberOfTeams = 2, existingTeams = []) 
     const existing = existingTeams && existingTeams[i];
     return {
       ...(existing || {}),
+      id: existing?.id || newTeamId(),
       name: existing?.name || teamNames[i] || `Team ${i + 1}`,
       color: existing?.color || teamColors[i % teamColors.length],
       playerIds: [],

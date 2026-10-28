@@ -10,43 +10,65 @@ export default function RecordActivityModal({
   match,
   players = [],
   teams = [],
+  sessions = [],
+  defaultSessionId = null,
   onSave,
 }) {
   const modalRef = useModalFocusTrap({ isOpen, onClose, initialFocusSelector: 'input[role="combobox"]' });
 
   const [type, setType] = useState('goal');
+  const [sessionId, setSessionId] = useState(defaultSessionId || '');
   const [playerId, setPlayerId] = useState('');
   const [minute, setMinute] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Group players by team so the right person is easy to find
+  const hasSessions = sessions.length > 0;
+  const selectedSession = sessions.find((x) => x.id === sessionId) || null;
+
+  // Group players by team so the right person is easy to find.
+  // With sessions, only the two teams playing in the chosen session are listed.
   const groups = useMemo(() => {
     const byId = {};
     players.forEach((p) => { byId[p.id] = p; });
-    const used = new Set();
     const result = [];
 
+    if (hasSessions) {
+      if (!selectedSession) return [];
+      [selectedSession.teamAId, selectedSession.teamBId].forEach((tid) => {
+        const team = teams.find((t) => t.id === tid);
+        if (!team) return;
+        const members = (team.playerIds || []).map((pid) => byId[pid]).filter(Boolean);
+        if (members.length > 0) result.push({ label: team.name, teamId: team.id, members });
+      });
+      return result;
+    }
+
+    const used = new Set();
     teams.forEach((team, idx) => {
       const members = (team.playerIds || []).map((pid) => byId[pid]).filter(Boolean);
       members.forEach((m) => used.add(m.id));
       if (members.length > 0) {
-        result.push({ label: team.name || `Team ${String.fromCharCode(65 + idx)}`, members });
+        result.push({ label: team.name || `Team ${String.fromCharCode(65 + idx)}`, teamId: team.id || null, members });
       }
     });
 
     const rest = players.filter((p) => !used.has(p.id));
     if (rest.length > 0) {
-      result.push({ label: teams.length > 0 ? 'Unassigned' : 'Match Squad', members: rest });
+      result.push({ label: teams.length > 0 ? 'Unassigned' : 'Match Squad', teamId: null, members: rest });
     }
     return result;
-  }, [players, teams]);
+  }, [players, teams, hasSessions, selectedSession]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (hasSessions && !selectedSession) {
+      setError('Please select a session.');
+      return;
+    }
     if (!playerId) {
       setError('Please select a player.');
       return;
@@ -58,7 +80,14 @@ export default function RecordActivityModal({
     }
     try {
       setIsSubmitting(true);
-      await onSave({ type, playerId: isNaN(Number(playerId)) ? playerId : Number(playerId), minute: min });
+      const owner = groups.find((g) => g.members.some((m) => String(m.id) === String(playerId)));
+      await onSave({
+        type,
+        playerId: isNaN(Number(playerId)) ? playerId : Number(playerId),
+        minute: min,
+        sessionId: hasSessions ? sessionId : null,
+        teamId: owner?.teamId || null,
+      });
       onClose();
     } catch (err) {
       setError(err.message || 'Failed to record activity.');
@@ -99,13 +128,40 @@ export default function RecordActivityModal({
         </div>
 
         <p className="modal-description">
-          Log who scored a goal or committed a foul in {match?.title || 'this match'}.
+          Log who scored a goal or committed a foul in {match?.title || 'this match'}{hasSessions ? ', for a specific session' : ''}.
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {error && (
             <div role="alert" style={{ padding: '8px 12px', borderRadius: '8px', backgroundColor: '#FEE2E2', color: '#991B1B', fontSize: '12.5px', fontWeight: 600 }}>
               {error}
+            </div>
+          )}
+
+          {/* Session (only when the match has sessions) */}
+          {hasSessions && (
+            <div className="rating-input-field">
+              <label htmlFor="activity-session" className="rating-field-label">Session</label>
+              <select
+                id="activity-session"
+                value={sessionId}
+                onChange={(e) => {
+                  setSessionId(e.target.value);
+                  setPlayerId('');
+                }}
+                style={{ ...fieldStyle, cursor: 'pointer' }}
+              >
+                <option value="">Select session…</option>
+                {sessions.map((x) => {
+                  const a = teams.find((t) => t.id === x.teamAId)?.name || 'Removed team';
+                  const b = teams.find((t) => t.id === x.teamBId)?.name || 'Removed team';
+                  return (
+                    <option key={x.id} value={x.id}>
+                      {x.name}: {a} vs {b} ({x.status})
+                    </option>
+                  );
+                })}
+              </select>
             </div>
           )}
 
@@ -152,7 +208,7 @@ export default function RecordActivityModal({
               groups={groups}
               value={playerId}
               onChange={setPlayerId}
-              placeholder="Search by name or jersey #…"
+              placeholder={hasSessions && !selectedSession ? 'Select a session first' : 'Search by name or jersey #…'}
             />
           </div>
 

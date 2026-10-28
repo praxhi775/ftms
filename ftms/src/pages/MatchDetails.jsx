@@ -33,6 +33,10 @@ import { ACTIVITY_TYPES } from '../components/matches/activityTypes';
 import GuestPlayerModal from '../components/matches/GuestPlayerModal';
 import TeamFormModal from '../components/matches/TeamFormModal';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import SessionsPanel from '../components/matches/SessionsPanel';
+import SessionFormModal from '../components/matches/SessionFormModal';
+import SessionScoreModal from '../components/matches/SessionScoreModal';
+import { newTeamId, sessionGoals, computeStandings } from '../utils/sessionUtils';
 
 const PRESET_TEAM_COLORS = [
   { name: 'Team Green', bg: '#003B1B', light: '#ECFDF5', border: '#A7F3D0', text: '#003B1B' },
@@ -70,6 +74,14 @@ export default function MatchDetails() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isRecordStatsOpen, setIsRecordStatsOpen] = useState(false);
   const [isActivityOpen, setIsActivityOpen] = useState(false);
+  const [activitySessionId, setActivitySessionId] = useState('');
+  const [activityFilter, setActivityFilter] = useState('all'); // 'all' | 'match' | sessionId
+
+  // Sessions
+  const [isSessionFormOpen, setIsSessionFormOpen] = useState(false);
+  const [sessionToEdit, setSessionToEdit] = useState(null);
+  const [sessionToComplete, setSessionToComplete] = useState(null);
+  const [sessionToDelete, setSessionToDelete] = useState(null);
   const [isAddGuestOpen, setIsAddGuestOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [editingTeamIdx, setEditingTeamIdx] = useState(null);
@@ -92,7 +104,7 @@ export default function MatchDetails() {
     try {
       setLoading(true);
       const matchId = Number(id);
-      const m = await matchService.getById(matchId);
+      const m = await matchService.ensureTeamIds(matchId);
       if (!m) {
         setError('Match fixture not found.');
         return;
@@ -350,6 +362,7 @@ export default function MatchDetails() {
       showToast(`"${name}" updated.`);
     } else {
       const newTeam = {
+        id: newTeamId(),
         name,
         color,
         playerIds: [],
@@ -371,6 +384,10 @@ export default function MatchDetails() {
       return;
     }
     const teamToDelete = teams[teamIdx];
+    if (sessions.some((x) => x.teamAId === teamToDelete?.id || x.teamBId === teamToDelete?.id)) {
+      showToast(`"${teamToDelete.name}" is used in a session. Delete that session first.`);
+      return;
+    }
     const updated = teams.filter((_, idx) => idx !== teamIdx);
     setTeams(updated);
     setNumTeams(updated.length);
@@ -382,6 +399,10 @@ export default function MatchDetails() {
   const handleClearTeams = async () => {
     if (isCompleted) {
       showToast('Cannot reset lineups for a completed match.');
+      return;
+    }
+    if (sessions.length > 0) {
+      showToast('Delete the sessions first, then you can clear the teams.');
       return;
     }
     setTeams([]);
@@ -403,6 +424,11 @@ export default function MatchDetails() {
     }
 
     const generated = generateTeams(allAvailableIds, numTeams, teams);
+    const usedTeamIds = new Set(sessions.flatMap((x) => [x.teamAId, x.teamBId]));
+    if ([...usedTeamIds].some((tid) => !generated.some((t) => t.id === tid))) {
+      showToast('Some teams are used in sessions. Keep at least that many teams, or delete those sessions first.');
+      return;
+    }
     setTeams(generated);
     setSelectedPlayerToSwap(null);
 
@@ -513,6 +539,60 @@ export default function MatchDetails() {
     showToast(`Player moved to ${dest}.`);
   };
 
+  const sessions = match?.sessions || [];
+  const hasSessions = sessions.length > 0;
+  const teamName = (tid) => teams.find((t) => t.id === tid)?.name || 'Removed team';
+
+  const openActivity = (sessionId = '') => {
+    // default to the active session when recording from the header button
+    const fallback = sessions.find((x) => x.status === 'active')?.id || '';
+    setActivitySessionId(sessionId || fallback);
+    setIsActivityOpen(true);
+  };
+
+  const handleSaveSession = async ({ name, teamAId, teamBId }) => {
+    if (sessionToEdit) {
+      await matchService.updateSession(match.id, sessionToEdit.id, { name, teamAId, teamBId });
+      showToast('Session updated.');
+    } else {
+      await matchService.addSession(match.id, { name, teamAId, teamBId });
+      showToast('Session added.');
+    }
+    await loadMatchData();
+  };
+
+  const handleChangeSessionStatus = async (session, status) => {
+    if (status === 'completed') {
+      setSessionToComplete(session);
+      return;
+    }
+    try {
+      await matchService.setSessionStatus(match.id, session.id, status);
+      await loadMatchData();
+      showToast(`"${session.name}" is now ${status}.`);
+    } catch (err) {
+      showToast(err.message || 'Failed to update session');
+    }
+  };
+
+  const handleConfirmSessionComplete = async (score) => {
+    await matchService.setSessionStatus(match.id, sessionToComplete.id, 'completed', score);
+    await loadMatchData();
+    showToast(`"${sessionToComplete.name}" completed.`);
+  };
+
+  const handleDeleteSession = async () => {
+    if (!sessionToDelete) return;
+    try {
+      await matchService.removeSession(match.id, sessionToDelete.id);
+      await loadMatchData();
+      showToast(`"${sessionToDelete.name}" deleted.`);
+    } catch (err) {
+      showToast(err.message || 'Failed to delete session');
+    }
+    setSessionToDelete(null);
+  };
+
   // Goals recorded via Record Activity, counted per team (Team A = home, Team B = away)
   const recordedGoals = (() => {
     const counts = [0, 0];
@@ -533,7 +613,8 @@ export default function MatchDetails() {
   const handleCompleteMatch = async (e) => {
     e.preventDefault();
     try {
-      const scoreObj = { home: Number(scoreHome), away: Number(scoreAway) };
+      // A match with sessions is decided by its league table, not one score
+      const scoreObj = hasSessions ? null : { home: Number(scoreHome), away: Number(scoreAway) };
       await matchService.completeMatch(match.id, scoreObj, match.notes);
       setMatch((prev) => ({
         ...prev,
@@ -541,7 +622,7 @@ export default function MatchDetails() {
         score: scoreObj,
       }));
       setIsScoreModalOpen(false);
-      showToast('Match marked completed with score logged.');
+      showToast(hasSessions ? 'Match marked completed.' : 'Match marked completed with score logged.');
     } catch (err) {
       showToast(err.message || 'Failed to complete match');
     }
@@ -623,7 +704,7 @@ export default function MatchDetails() {
           <button
             type="button"
             className="btn-dossier-action btn-export-sheet"
-            onClick={() => setIsActivityOpen(true)}
+            onClick={() => openActivity()}
             title="Record a goal or foul"
           >
             <Activity size={15} />
@@ -692,6 +773,20 @@ export default function MatchDetails() {
             </h1>
           </div>
 
+          {match.status === 'completed' && !match.score && hasSessions && (() => {
+            const leader = computeStandings(sessions, teams)[0];
+            if (!leader || leader.played === 0) return null;
+            return (
+              <div style={{ backgroundColor: '#fff', border: '1px solid var(--border-subtle)', borderRadius: '14px', padding: '12px 24px', textAlign: 'center', boxShadow: 'var(--shadow-sm)' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>League Winner</span>
+                <div style={{ fontSize: '22px', fontWeight: 800, fontFamily: 'var(--font-heading)', color: 'var(--forest-green)', marginTop: '2px' }}>
+                  {teamName(leader.teamId)}
+                </div>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{leader.pts} pts</span>
+              </div>
+            );
+          })()}
+
           {match.status === 'completed' && match.score && (
             <div style={{
               backgroundColor: '#fff',
@@ -736,9 +831,33 @@ export default function MatchDetails() {
         )}
       </section>
 
+      {/* Sessions (league-style fixtures between the match's teams) */}
+      <SessionsPanel
+        sessions={sessions}
+        teams={teams}
+        events={match.events || []}
+        matchCompleted={isCompleted}
+        onAdd={() => {
+          setSessionToEdit(null);
+          setIsSessionFormOpen(true);
+        }}
+        onEdit={(x) => {
+          setSessionToEdit(x);
+          setIsSessionFormOpen(true);
+        }}
+        onDelete={(x) => setSessionToDelete(x)}
+        onChangeStatus={handleChangeSessionStatus}
+        onRecordActivity={(sid) => openActivity(sid)}
+      />
+
       {/* Match Activity Log (goals & fouls) */}
       {(() => {
-        const events = [...(match.events || [])].sort((a, b) => {
+        const visibleEvents = (match.events || []).filter((e) => {
+          if (activityFilter === 'all') return true;
+          if (activityFilter === 'match') return !e.sessionId;
+          return e.sessionId === activityFilter;
+        });
+        const events = [...visibleEvents].sort((a, b) => {
           const am = a.minute ?? Infinity;
           const bm = b.minute ?? Infinity;
           if (am !== bm) return am - bm;
@@ -770,7 +889,21 @@ export default function MatchDetails() {
                   Goals and fouls recorded for this match.
                 </p>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                {hasSessions && (
+                  <select
+                    value={activityFilter}
+                    onChange={(e) => setActivityFilter(e.target.value)}
+                    aria-label="Filter activity by session"
+                    style={{ padding: '5px 10px', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '12px', fontFamily: 'inherit', backgroundColor: '#fff', cursor: 'pointer' }}
+                  >
+                    <option value="all">All sessions</option>
+                    {sessions.map((x) => (
+                      <option key={x.id} value={x.id}>{x.name}</option>
+                    ))}
+                    <option value="match">Match-level (no session)</option>
+                  </select>
+                )}
                 <span style={{ padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, backgroundColor: ACTIVITY_TYPES.goal.bg, color: ACTIVITY_TYPES.goal.color }}>
                   {goals.length} {goals.length === 1 ? 'Goal' : 'Goals'}
                 </span>
@@ -788,7 +921,9 @@ export default function MatchDetails() {
 
             {events.length === 0 ? (
               <div style={{ padding: '22px', textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)', backgroundColor: 'var(--bg-subtle)', borderRadius: '12px' }}>
-                No activity recorded yet. Use <strong>Record Activity</strong> to log a goal or foul.
+                {(match.events || []).length > 0
+                  ? 'No activity matches this filter.'
+                  : <>No activity recorded yet. Use <strong>Record Activity</strong> to log a goal or foul.</>}
               </div>
             ) : (
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -815,6 +950,11 @@ export default function MatchDetails() {
                         {teamOfPlayer[ev.playerId] && (
                           <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: '8px' }}>
                             {teamOfPlayer[ev.playerId]}
+                          </span>
+                        )}
+                        {ev.sessionId && (
+                          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginLeft: '8px', padding: '1px 7px', borderRadius: '999px', backgroundColor: '#fff', border: '1px solid var(--border-subtle)' }}>
+                            {sessions.find((x) => x.id === ev.sessionId)?.name || 'Deleted session'}
                           </span>
                         )}
                       </div>
@@ -1567,14 +1707,39 @@ export default function MatchDetails() {
       {isScoreModalOpen && (
         <div className="modal-overlay-backdrop" role="dialog" aria-modal="true">
           <div className="modal-content-card" style={{ maxWidth: '400px' }}>
-            <h2 className="modal-heading" style={{ marginBottom: '8px' }}>Log Final Match Score</h2>
+            <h2 className="modal-heading" style={{ marginBottom: '8px' }}>{hasSessions ? 'Complete Match' : 'Log Final Match Score'}</h2>
             <p className="modal-description">
-              {recordedGoals.home + recordedGoals.away > 0
+              {hasSessions
+                ? 'This match has sessions, so the result comes from the league table.'
+                : recordedGoals.home + recordedGoals.away > 0
                 ? 'Score is pre-filled from the goals recorded in Match Activity. You can adjust it before confirming.'
                 : 'Enter final result to mark fixture completed.'}
             </p>
 
             <form onSubmit={handleCompleteMatch}>
+              {hasSessions ? (
+                <div style={{ margin: '16px 0', fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {(() => {
+                    const done = sessions.filter((x) => x.status === 'completed').length;
+                    const table = computeStandings(sessions, teams);
+                    const leader = table[0] && table[0].played > 0 ? table[0] : null;
+                    return (
+                      <>
+                        <div><strong>{done}</strong> of <strong>{sessions.length}</strong> sessions completed.</div>
+                        {done < sessions.length && (
+                          <div style={{ padding: '8px 12px', borderRadius: '8px', backgroundColor: '#FFFBEB', color: '#92400E', fontWeight: 600 }}>
+                            Some sessions are not completed. They will not count in the league table, and sessions are locked once the match is completed.
+                          </div>
+                        )}
+                        {leader && (
+                          <div>League leader: <strong>{teamName(leader.teamId)}</strong> ({leader.pts} pts)</div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              ) : (
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', margin: '16px 0' }}>
                 <div className="rating-input-field">
                   <label className="rating-field-label">{teams[0]?.name || 'Home / Team A'}</label>
@@ -1599,6 +1764,7 @@ export default function MatchDetails() {
                   />
                 </div>
               </div>
+              )}
 
               <div className="modal-actions-footer">
                 <button type="button" className="btn-modal-cancel" onClick={() => setIsScoreModalOpen(false)}>
@@ -1613,6 +1779,50 @@ export default function MatchDetails() {
         </div>
       )}
 
+      {/* Session add / edit */}
+      <SessionFormModal
+        isOpen={isSessionFormOpen}
+        onClose={() => {
+          setIsSessionFormOpen(false);
+          setSessionToEdit(null);
+        }}
+        teams={teams}
+        sessionToEdit={sessionToEdit}
+        nextNumber={sessions.length + 1}
+        hasEvents={!!sessionToEdit && (match.events || []).some((e) => e.sessionId === sessionToEdit.id)}
+        onSave={handleSaveSession}
+      />
+
+      {/* Session completion (score entry, pre-filled from recorded goals) */}
+      <SessionScoreModal
+        isOpen={!!sessionToComplete}
+        onClose={() => setSessionToComplete(null)}
+        session={sessionToComplete}
+        teamAName={sessionToComplete ? teamName(sessionToComplete.teamAId) : ''}
+        teamBName={sessionToComplete ? teamName(sessionToComplete.teamBId) : ''}
+        initialScore={sessionToComplete ? sessionGoals(sessionToComplete, match.events || [], teams) : null}
+        hasRecordedGoals={
+          !!sessionToComplete &&
+          (match.events || []).some((e) => e.sessionId === sessionToComplete.id && e.type === 'goal')
+        }
+        onConfirm={handleConfirmSessionComplete}
+      />
+
+      {/* Session delete confirmation */}
+      <ConfirmDialog
+        isOpen={!!sessionToDelete}
+        title="Delete Session"
+        message={
+          sessionToDelete
+            ? `Delete "${sessionToDelete.name}"? ${(match.events || []).filter((e) => e.sessionId === sessionToDelete.id).length} recorded goal/foul entries for this session will be deleted too.`
+            : ''
+        }
+        confirmLabel="Delete Session"
+        confirmVariant="danger"
+        onCancel={() => setSessionToDelete(null)}
+        onConfirm={handleDeleteSession}
+      />
+
       {/* Record Activity Modal (goal / foul) */}
       {isActivityOpen && (
         <RecordActivityModal
@@ -1620,6 +1830,8 @@ export default function MatchDetails() {
           match={match}
           players={[...squadPlayers, ...guestPlayers.map((g) => ({ ...g, isGuest: true }))]}
           teams={teams}
+          sessions={sessions}
+          defaultSessionId={activitySessionId}
           onClose={() => setIsActivityOpen(false)}
           onSave={handleSaveActivity}
         />

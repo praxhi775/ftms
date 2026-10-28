@@ -15,14 +15,15 @@ import {
 } from 'lucide-react';
 import { playerService, calcOverall } from '../services/playerService';
 import { generateTeams } from '../services/teamService';
+import { newTeamId } from '../utils/sessionUtils';
 import GuestPlayerModal from '../components/matches/GuestPlayerModal';
 import TeamFormModal from '../components/matches/TeamFormModal';
 import { PRESET_JERSEY_COLORS } from '../components/matches/teamColors';
 import CreateMatchFromTeamsModal from '../components/matches/CreateMatchFromTeamsModal';
 
 const DEFAULT_TEAMS = [
-  { name: 'Team Green', color: '#003B1B', playerIds: [], sortBy: 'manual' },
-  { name: 'Team White', color: '#4B5563', playerIds: [], sortBy: 'manual' },
+  { id: newTeamId(), name: 'Team Green', color: '#003B1B', playerIds: [], sortBy: 'manual' },
+  { id: newTeamId(), name: 'Team White', color: '#4B5563', playerIds: [], sortBy: 'manual' },
 ];
 
 export default function TeamGenerator() {
@@ -279,7 +280,7 @@ export default function TeamGenerator() {
       setTeams(teams.map((t, idx) => idx === editingTeamIdx ? { ...t, name, color } : t));
       showToast(`"${name}" updated.`);
     } else {
-      const newTeams = [...teams, { name, color, playerIds: [], sortBy: 'manual' }];
+      const newTeams = [...teams, { id: newTeamId(), name, color, playerIds: [], sortBy: 'manual' }];
       setTeams(newTeams);
       setNumTeams(newTeams.length);
       showToast(`"${name}" created.`);
