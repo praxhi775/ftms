@@ -354,7 +354,7 @@ export default function TeamGenerator() {
     } catch (e) {
       console.error(e);
     }
-    navigate(`/matches/${matchId}`, { replace: true });
+    navigate(`/sessions/${matchId}`, { replace: true });
   };
 
   if (loading) {
@@ -377,7 +377,7 @@ export default function TeamGenerator() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
         <button
           type="button"
-          onClick={() => navigate('/matches')}
+          onClick={() => navigate('/sessions')}
           className="btn-dossier-action"
           style={{
             display: 'inline-flex',
@@ -390,7 +390,7 @@ export default function TeamGenerator() {
           }}
         >
           <ArrowLeft size={15} />
-          <span>Back to Matches</span>
+          <span>Back to Sessions</span>
         </button>
 
         <button
@@ -408,7 +408,7 @@ export default function TeamGenerator() {
           }}
         >
           <Trophy size={16} />
-          <span>Save &amp; Create Match</span>
+          <span>Save &amp; Create Session</span>
         </button>
       </div>
 
@@ -418,7 +418,7 @@ export default function TeamGenerator() {
           <div className="hero-title-group">
             <h1 className="hero-title" style={{ fontSize: '28px' }}>Manual Team Builder</h1>
             <p className="hero-subtitle">
-              Handcraft teams with custom lineups and jersey colors, add guest players, and save directly into matches.
+              Handcraft teams with custom lineups and jersey colors, add guest players, and save directly into sessions.
             </p>
           </div>
         

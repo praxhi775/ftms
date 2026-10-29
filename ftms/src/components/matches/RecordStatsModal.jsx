@@ -60,7 +60,7 @@ export default function RecordStatsModal({
       onStatsSaved();
       onClose();
     } catch (err) {
-      console.error('Failed to save match player stats:', err);
+      console.error('Failed to save session player stats:', err);
     } finally {
       setIsSubmitting(false);
     }
@@ -82,7 +82,7 @@ export default function RecordStatsModal({
         <div className="modal-header-row">
           <div className="modal-title-group">
             <Award size={18} className="modal-header-icon" />
-            <h2 className="modal-heading">Record Match Statistics</h2>
+            <h2 className="modal-heading">Record Session Statistics</h2>
           </div>
           <button
             type="button"
@@ -113,7 +113,7 @@ export default function RecordStatsModal({
               gap: '4px'
             }}>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
-                Match Squad ({players.length})
+                Session Squad ({players.length})
               </span>
               {players.map((p) => {
                 const isSelected = p.id === activePlayer?.id;

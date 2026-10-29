@@ -1,7 +1,6 @@
 import { CalendarClock, Plus, Pencil, Trash2, Activity, Trophy } from 'lucide-react';
 import {
   SESSION_STATUSES,
-  SESSION_STATUS_ORDER,
   sessionGoals,
   computeStandings,
 } from '../../utils/sessionUtils';
@@ -20,6 +19,31 @@ function TeamDot({ color }) {
         marginRight: '6px',
       }}
     />
+  );
+}
+
+const STATUS_ACCENT = { upcoming: '#E5E7EB', active: '#34D399', completed: '#9CA3AF' };
+
+function TeamChip({ team }) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        maxWidth: '100%',
+        padding: '6px 12px',
+        borderRadius: '999px',
+        backgroundColor: 'var(--bg-subtle)',
+        border: '1px solid var(--border-subtle)',
+        fontSize: '13.5px',
+        fontWeight: 700,
+        color: 'var(--text-primary)',
+        overflowWrap: 'anywhere',
+      }}
+    >
+      <TeamDot color={team?.color} />
+      {team?.name || 'Removed team'}
+    </span>
   );
 }
 
@@ -57,7 +81,7 @@ export default function SessionsPanel({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <CalendarClock size={18} style={{ color: 'var(--forest-green)' }} />
             <h2 id="sessions-heading" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Sessions
+              Matches
             </h2>
           </div>
           <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -72,23 +96,23 @@ export default function SessionsPanel({
           disabled={!canAdd}
           title={
             matchCompleted
-              ? 'Sessions are locked for a completed match'
+              ? 'Matches are locked for a completed session'
               : teams.length < 2
                 ? 'Create at least two teams first'
-                : 'Add a session'
+                : 'Add a match'
           }
           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: canAdd ? 1 : 0.5, cursor: canAdd ? 'pointer' : 'not-allowed' }}
         >
           <Plus size={15} />
-          <span>Add Session</span>
+          <span>Add Match</span>
         </button>
       </div>
 
       {sessions.length === 0 ? (
         <div style={{ padding: '22px', textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)', backgroundColor: 'var(--bg-subtle)', borderRadius: '12px' }}>
           {teams.length < 2
-            ? 'Create at least two teams in the Team Builder below, then add sessions between them.'
-            : <>No sessions yet. Use <strong>Add Session</strong> to schedule the first fixture.</>}
+            ? 'Create at least two teams in the Team Builder below, then add matches between them.'
+            : <>No matches yet. Use <strong>Add Match</strong> to schedule the first fixture.</>}
         </div>
       ) : (
         <>
@@ -96,7 +120,6 @@ export default function SessionsPanel({
             {sessions.map((session, idx) => {
               const teamA = teamById(session.teamAId);
               const teamB = teamById(session.teamBId);
-              const status = SESSION_STATUSES[session.status] || SESSION_STATUSES.upcoming;
               const goals = sessionGoals(session, events, teams);
               const recordedCount = events.filter((e) => e.sessionId === session.id).length;
 
@@ -107,112 +130,150 @@ export default function SessionsPanel({
                 scoreText = `${goals.a} – ${goals.b}`;
               }
 
+              const isActive = session.status === 'active';
+              // activity can only be recorded while the match is active
+              const canRecord = !matchCompleted && isActive;
+
               return (
                 <li
                   key={session.id}
                   style={{
-                    border: session.status === 'active' ? '2px solid #6EE7B7' : '1px solid var(--border-subtle)',
+                    display: 'flex',
                     borderRadius: '14px',
-                    padding: '14px 16px',
-                    backgroundColor: session.status === 'active' ? '#F4FBF7' : 'var(--bg-subtle)',
+                    overflow: 'hidden',
+                    backgroundColor: '#fff',
+                    border: '1px solid var(--border-subtle)',
+                    boxShadow: isActive ? '0 0 0 2px #A7F3D0' : 'none',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)' }}>#{idx + 1}</span>
-                      <strong style={{ fontSize: '15px', color: 'var(--text-primary)' }}>{session.name}</strong>
-                      <span
-                        style={{ padding: '2px 9px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, backgroundColor: status.bg, color: status.color, border: `1px solid ${status.border}` }}
+                  {/* Colour strip shows the status at a glance */}
+                  <div aria-hidden="true" style={{ width: '5px', flexShrink: 0, backgroundColor: STATUS_ACCENT[session.status] || '#9CA3AF' }} />
+
+                  <div style={{ flex: 1, minWidth: 0, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {/* Title + actions */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                        <span
+                          aria-hidden="true"
+                          style={{ width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 800, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}
+                        >
+                          {idx + 1}
+                        </span>
+                        <strong style={{ fontSize: '15px', color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{session.name}</strong>
+                        {isActive && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 800, letterSpacing: '0.05em', color: '#047857' }}>
+                            <span aria-hidden="true" style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10B981' }} />
+                            LIVE
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          style={{
+                            ...iconBtn,
+                            color: canRecord ? 'var(--forest-green)' : '#D1D5DB',
+                            cursor: canRecord ? 'pointer' : 'not-allowed',
+                          }}
+                          onClick={() => onRecordActivity(session.id)}
+                          disabled={!canRecord}
+                          aria-label={`Record activity for ${session.name}`}
+                          title={
+                            matchCompleted
+                              ? 'Session is completed'
+                              : session.status === 'completed'
+                                ? 'Match is completed'
+                                : !isActive
+                                  ? 'Set this match to Active to record activity'
+                                  : 'Record goal / foul'
+                          }
+                        >
+                          <Activity size={16} />
+                        </button>
+                        {!matchCompleted && (
+                          <>
+                            <button type="button" style={{ ...iconBtn, color: 'var(--text-secondary)' }} onClick={() => onEdit(session)} aria-label={`Edit ${session.name}`} title="Edit match">
+                              <Pencil size={15} />
+                            </button>
+                            <button type="button" style={{ ...iconBtn, color: '#DC2626' }} onClick={() => onDelete(session)} aria-label={`Delete ${session.name}`} title="Delete match">
+                              <Trash2 size={15} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Fixture: team vs team with the score in the middle */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <TeamChip team={teamA} />
+                      </div>
+                      <div
+                        style={{
+                          minWidth: '76px',
+                          padding: '6px 14px',
+                          textAlign: 'center',
+                          borderRadius: '10px',
+                          backgroundColor: session.status === 'upcoming' ? 'var(--bg-subtle)' : '#F4FBF7',
+                          fontSize: '20px',
+                          fontWeight: 800,
+                          fontFamily: 'var(--font-heading)',
+                          color: session.status === 'upcoming' ? 'var(--text-muted)' : 'var(--forest-green)',
+                        }}
                       >
-                        {status.label}
+                        {scoreText}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                        <TeamChip team={teamB} />
+                      </div>
+                    </div>
+
+                    {/* Status control + activity count */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                      <div role="group" aria-label={`Status of ${session.name}`} style={{ display: 'inline-flex', gap: '4px', padding: '3px', backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--border-subtle)', borderRadius: '10px' }}>
+                        {[
+                          { key: 'active', hint: isActive ? 'Click again to set this match back to not started' : 'Start this match' },
+                          { key: 'completed', hint: 'Complete this match' },
+                        ].map(({ key, hint }) => {
+                          const cfg = SESSION_STATUSES[key];
+                          const selected = session.status === key;
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              aria-pressed={selected}
+                              disabled={matchCompleted}
+                              title={selected && key === 'completed' ? undefined : hint}
+                              onClick={() => {
+                                if (key === 'active') {
+                                  // Active toggles: start it, or click again to put it back to "not started"
+                                  onChangeStatus(session, selected ? 'upcoming' : 'active');
+                                } else if (!selected) {
+                                  onChangeStatus(session, 'completed');
+                                }
+                              }}
+                              style={{
+                                padding: '5px 14px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                fontFamily: 'inherit',
+                                cursor: matchCompleted || (selected && key === 'completed') ? 'default' : 'pointer',
+                                backgroundColor: selected ? cfg.bg : 'transparent',
+                                color: selected ? cfg.color : 'var(--text-muted)',
+                              }}
+                            >
+                              {cfg.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                        {recordedCount} {recordedCount === 1 ? 'activity' : 'activities'} recorded
                       </span>
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                      <button
-                        type="button"
-                        style={{
-                          ...iconBtn,
-                          color: matchCompleted || session.status === 'completed' ? '#D1D5DB' : 'var(--forest-green)',
-                          cursor: matchCompleted || session.status === 'completed' ? 'not-allowed' : 'pointer',
-                        }}
-                        onClick={() => onRecordActivity(session.id)}
-                        disabled={matchCompleted || session.status === 'completed'}
-                        aria-label={`Record activity for ${session.name}`}
-                        title={
-                          matchCompleted
-                            ? 'Match is completed'
-                            : session.status === 'completed'
-                              ? 'Session is completed'
-                              : 'Record goal / foul'
-                        }
-                      >
-                        <Activity size={16} />
-                      </button>
-                      {!matchCompleted && (
-                        <>
-                          <button type="button" style={{ ...iconBtn, color: 'var(--text-secondary)' }} onClick={() => onEdit(session)} aria-label={`Edit ${session.name}`} title="Edit session">
-                            <Pencil size={15} />
-                          </button>
-                          <button type="button" style={{ ...iconBtn, color: '#DC2626' }} onClick={() => onDelete(session)} aria-label={`Delete ${session.name}`} title="Delete session">
-                            <Trash2 size={15} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Fixture */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '12px', margin: '12px 0' }}>
-                    <div style={{ textAlign: 'right', fontWeight: 700, fontSize: '14px', color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>
-                      <TeamDot color={teamA?.color} />
-                      {teamA?.name || 'Removed team'}
-                    </div>
-                    <div style={{ minWidth: '70px', textAlign: 'center', fontSize: '22px', fontWeight: 800, fontFamily: 'var(--font-heading)', color: session.status === 'upcoming' ? 'var(--text-muted)' : 'var(--forest-green)' }}>
-                      {scoreText}
-                      {session.status === 'active' && (
-                        <span style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#047857', letterSpacing: '0.05em' }}>LIVE · FROM ACTIVITY</span>
-                      )}
-                    </div>
-                    <div style={{ textAlign: 'left', fontWeight: 700, fontSize: '14px', color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>
-                      <TeamDot color={teamB?.color} />
-                      {teamB?.name || 'Removed team'}
-                    </div>
-                  </div>
-
-                  {/* Status control */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                    <div role="group" aria-label={`Status of ${session.name}`} style={{ display: 'inline-flex', gap: '4px', padding: '3px', backgroundColor: '#fff', border: '1px solid var(--border-subtle)', borderRadius: '10px' }}>
-                      {SESSION_STATUS_ORDER.map((key) => {
-                        const cfg = SESSION_STATUSES[key];
-                        const selected = session.status === key;
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            aria-pressed={selected}
-                            disabled={matchCompleted}
-                            onClick={() => !selected && onChangeStatus(session, key)}
-                            style={{
-                              padding: '5px 12px',
-                              borderRadius: '8px',
-                              border: 'none',
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              fontFamily: 'inherit',
-                              cursor: matchCompleted || selected ? 'default' : 'pointer',
-                              backgroundColor: selected ? cfg.bg : 'transparent',
-                              color: selected ? cfg.color : 'var(--text-muted)',
-                            }}
-                          >
-                            {cfg.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                      {recordedCount} {recordedCount === 1 ? 'activity' : 'activities'} recorded
-                    </span>
                   </div>
                 </li>
               );
@@ -224,7 +285,7 @@ export default function SessionsPanel({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <Trophy size={16} style={{ color: 'var(--forest-green)' }} />
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>League Table</h3>
-              <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>completed sessions · 3 pts win, 1 pt draw</span>
+              <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>completed matches · 3 pts win, 1 pt draw</span>
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', minWidth: '420px' }}>

@@ -472,7 +472,7 @@ export default function Players() {
       <ConfirmDialog
         isOpen={!!playerToDelete}
         title="Delete Player Dossier"
-        message={playerToDelete ? `Are you sure you want to remove ${playerToDelete.name} (#${playerToDelete.jerseyNumber}) from your squad? Historical match records will preserve their presence.` : ''}
+        message={playerToDelete ? `Are you sure you want to remove ${playerToDelete.name} (#${playerToDelete.jerseyNumber}) from your squad? Historical session records will preserve their presence.` : ''}
         confirmLabel="Delete Player"
         confirmVariant="danger"
         onCancel={() => setPlayerToDelete(null)}

@@ -8,14 +8,14 @@ const HIDDEN_ON = ['/', '/teams', '/team-generator'];
 // The page "above" the current one
 function getParentPath(pathname) {
   if (pathname.startsWith('/players/')) return '/players';
-  if (pathname.startsWith('/matches/')) {
+  if (pathname.startsWith('/sessions/')) {
     let tab = null;
     try {
       tab = sessionStorage.getItem('ftms.matchesTab');
     } catch {
       /* storage unavailable: ignore */
     }
-    return tab === 'completed' ? '/matches?tab=completed' : '/matches';
+    return tab === 'completed' ? '/sessions?tab=completed' : '/sessions';
   }
   return '/';
 }
@@ -68,7 +68,7 @@ export default function BackButton() {
 
     // A match always goes back to the Matches list on the right tab (Upcoming / Completed),
     // no matter where it was opened from (Dashboard, player profile, a link...).
-    if (pathname.startsWith('/matches/')) {
+    if (pathname.startsWith('/sessions/')) {
       if (previous && previous.path === parent) {
         navigate(-1); // came straight from that list: keeps its scroll position
       } else {

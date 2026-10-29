@@ -86,7 +86,7 @@ export default function AddCustomMetricModal({
         </div>
 
         <p className="modal-description">
-          Create a custom tactical or performance dimension to calibrate across player match evaluations.
+          Create a custom tactical or performance dimension to calibrate across player session evaluations.
         </p>
 
         {error && (

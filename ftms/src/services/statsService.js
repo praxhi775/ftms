@@ -51,7 +51,7 @@ export const statsService = {
         if (existing.has(field.name.toLowerCase())) continue;
         await db.statDefinitions.add({
           name: field.name,
-          description: `Match rating for ${field.name.toLowerCase()} (1-100)`,
+          description: `Session rating for ${field.name.toLowerCase()} (1-100)`,
           category: field.category,
           type: 'quantitative',
           unit: '',

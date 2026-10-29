@@ -44,7 +44,7 @@ export default function CreateMatchFromTeamsModal({
           setSelectedMatchId(String(list[0].id));
         }
       } catch (err) {
-        console.error('Failed to load upcoming matches:', err);
+        console.error('Failed to load upcoming sessions:', err);
       }
     }
     fetchUpcoming();
@@ -76,10 +76,10 @@ export default function CreateMatchFromTeamsModal({
     try {
       if (mode === 'new') {
         if (!formData.title.trim()) {
-          throw new Error('Match title is required.');
+          throw new Error('Session title is required.');
         }
         if (!formData.date) {
-          throw new Error('Match date is required.');
+          throw new Error('Session date is required.');
         }
 
         // Get squad player IDs assigned to any team
@@ -100,10 +100,10 @@ export default function CreateMatchFromTeamsModal({
           notes: formData.notes.trim(),
         });
 
-        onSuccess(newMatchId, 'Match fixture created with handcrafted lineups!');
+        onSuccess(newMatchId, 'Session created with handcrafted lineups!');
       } else {
         if (!selectedMatchId) {
-          throw new Error('Please select an existing upcoming match.');
+          throw new Error('Please select an existing upcoming session.');
         }
 
         const matchIdNum = Number(selectedMatchId);
@@ -119,11 +119,11 @@ export default function CreateMatchFromTeamsModal({
           selectedPlayerIds: allAssignedPlayerIds,
         });
 
-        onSuccess(matchIdNum, 'Teams and lineups assigned to upcoming match!');
+        onSuccess(matchIdNum, 'Teams and lineups assigned to upcoming session!');
       }
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to save match');
+      setError(err.message || 'Failed to save session');
     } finally {
       setIsSubmitting(false);
     }
@@ -159,7 +159,7 @@ export default function CreateMatchFromTeamsModal({
                 Save Teams &amp; Create Match
               </h2>
               <p className="modal-description" style={{ margin: 0, fontSize: '12px' }}>
-                Lock your tactical lineups into a scheduled match fixture.
+                Lock your tactical lineups into a scheduled session.
               </p>
             </div>
           </div>
@@ -213,7 +213,7 @@ export default function CreateMatchFromTeamsModal({
               opacity: upcomingMatches.length === 0 ? 0.5 : 1
             }}
           >
-            Apply to Existing Match {upcomingMatches.length > 0 ? `(${upcomingMatches.length})` : ''}
+            Apply to Existing Session {upcomingMatches.length > 0 ? `(${upcomingMatches.length})` : ''}
           </button>
         </div>
 
@@ -369,7 +369,7 @@ export default function CreateMatchFromTeamsModal({
                 </div>
                 <div className="rating-input-field">
                   <label className="rating-field-label" style={{ fontWeight: 600, fontSize: '13px' }}>
-                    Match Type
+                    Session Type
                   </label>
                   <select
                     value={formData.matchType}
@@ -386,7 +386,7 @@ export default function CreateMatchFromTeamsModal({
                   >
                     <option value="Friendly">Friendly Scrimmage</option>
                     <option value="League">League Fixture</option>
-                    <option value="Cup">Cup Match</option>
+                    <option value="Cup">Cup</option>
                     <option value="Training">Training Session</option>
                   </select>
                 </div>
@@ -419,7 +419,7 @@ export default function CreateMatchFromTeamsModal({
             /* Existing Match Dropdown */
             <div className="rating-input-field">
               <label className="rating-field-label" style={{ fontWeight: 600, fontSize: '13px' }}>
-                Select Upcoming Match
+                Select Upcoming Session
               </label>
               <select
                 value={selectedMatchId}
@@ -441,7 +441,7 @@ export default function CreateMatchFromTeamsModal({
                 ))}
               </select>
               <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                The teams and lineups you built will override any previous lineups for this match.
+                The teams and lineups you built will override any previous lineups for this session.
               </span>
             </div>
           )}
@@ -458,7 +458,7 @@ export default function CreateMatchFromTeamsModal({
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
               <CheckCircle size={15} />
-              <span>{isSubmitting ? 'Saving...' : mode === 'new' ? 'Create Match & View' : 'Apply & View Match'}</span>
+              <span>{isSubmitting ? 'Saving...' : mode === 'new' ? 'Create Session & View' : 'Apply & View Session'}</span>
             </button>
           </div>
         </form>

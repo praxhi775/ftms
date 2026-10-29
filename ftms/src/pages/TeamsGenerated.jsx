@@ -29,7 +29,7 @@ export default function TeamsGenerated() {
   };
 
   const handleConfirm = () => {
-    showToast('Match confirmed! Sunday rosters locked.');
+    showToast('Session confirmed! Sunday rosters locked.');
   };
 
   const handleSwapPlayer = (player) => {

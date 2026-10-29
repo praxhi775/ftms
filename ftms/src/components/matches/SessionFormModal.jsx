@@ -27,7 +27,7 @@ export default function SessionFormModal({
       setTeamAId(sessionToEdit.teamAId);
       setTeamBId(sessionToEdit.teamBId);
     } else {
-      setName(`Session ${nextNumber}`);
+      setName(`Match ${nextNumber}`);
       setTeamAId(teams[0]?.id || '');
       setTeamBId(teams[1]?.id || '');
     }
@@ -44,7 +44,7 @@ export default function SessionFormModal({
       return;
     }
     if (teamAId === teamBId) {
-      setError('A session needs two different teams.');
+      setError('A match needs two different teams.');
       return;
     }
     try {
@@ -52,7 +52,7 @@ export default function SessionFormModal({
       await onSave({ name, teamAId, teamBId });
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to save session.');
+      setError(err.message || 'Failed to save match.');
     } finally {
       setIsSubmitting(false);
     }
@@ -87,10 +87,10 @@ export default function SessionFormModal({
           <div className="modal-title-group">
             <CalendarClock size={18} className="modal-header-icon" />
             <h2 id="modal-session-title" className="modal-heading">
-              {sessionToEdit ? 'Edit Session' : 'Add Session'}
+              {sessionToEdit ? 'Edit Match' : 'Add Match'}
             </h2>
           </div>
-          <button type="button" className="btn-modal-close" onClick={onClose} aria-label="Close session dialog">
+          <button type="button" className="btn-modal-close" onClick={onClose} aria-label="Close match dialog">
             <X size={18} />
           </button>
         </div>
@@ -107,7 +107,7 @@ export default function SessionFormModal({
           )}
 
           <div className="rating-input-field">
-            <label htmlFor="session-name" className="rating-field-label">Session name</label>
+            <label htmlFor="session-name" className="rating-field-label">Match name</label>
             <input
               id="session-name"
               type="text"
@@ -148,7 +148,7 @@ export default function SessionFormModal({
 
           {hasEvents && (
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '-6px' }}>
-              Teams are locked because activity has already been recorded for this session.
+              Teams are locked because activity has already been recorded for this match.
             </p>
           )}
 
@@ -158,7 +158,7 @@ export default function SessionFormModal({
             </button>
             <button type="submit" className="btn-modal-submit" disabled={isSubmitting}>
               <CheckCircle size={15} strokeWidth={2.4} />
-              <span>{sessionToEdit ? 'Save Session' : 'Add Session'}</span>
+              <span>{sessionToEdit ? 'Save Match' : 'Add Match'}</span>
             </button>
           </div>
         </form>

@@ -42,7 +42,7 @@ export default function TeamsGeneratedHeader({ onShuffle, onConfirm }) {
           aria-label="Confirm generated matchday squads"
         >
           <CheckCircle2 size={16} strokeWidth={2.4} aria-hidden="true" />
-          <span>Confirm match</span>
+          <span>Confirm session</span>
         </button>
       </div>
     </header>

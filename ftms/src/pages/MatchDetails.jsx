@@ -106,7 +106,7 @@ export default function MatchDetails() {
       const matchId = Number(id);
       const m = await matchService.ensureTeamIds(matchId);
       if (!m) {
-        setError('Match fixture not found.');
+        setError('Session not found.');
         return;
       }
       setMatch(m);
@@ -142,8 +142,8 @@ export default function MatchDetails() {
       setStatDefs(defs);
       setExistingStats(recorded);
     } catch (err) {
-      console.error('Failed to load match:', err);
-      setError('An error occurred loading match fixture.');
+      console.error('Failed to load session:', err);
+      setError('An error occurred loading session.');
     } finally {
       setLoading(false);
     }
@@ -216,7 +216,7 @@ export default function MatchDetails() {
 
   const handleDrop = async (e, targetTeamIdx) => {
     if (isCompleted) {
-      showToast('Cannot modify team lineups for a completed match.');
+      showToast('Cannot modify team lineups for a completed session.');
       return;
     }
     e.preventDefault();
@@ -364,7 +364,7 @@ export default function MatchDetails() {
   // --- Manual Team Management ---
   const handleSaveTeam = async ({ name, color }) => {
     if (isCompleted) {
-      showToast('Cannot modify teams for a completed match.');
+      showToast('Cannot modify teams for a completed session.');
       return;
     }
     let updated;
@@ -391,12 +391,12 @@ export default function MatchDetails() {
 
   const handleDeleteTeam = async (teamIdx) => {
     if (isCompleted) {
-      showToast('Cannot delete teams for a completed match.');
+      showToast('Cannot delete teams for a completed session.');
       return;
     }
     const teamToDelete = teams[teamIdx];
     if (sessions.some((x) => x.teamAId === teamToDelete?.id || x.teamBId === teamToDelete?.id)) {
-      showToast(`"${teamToDelete.name}" is used in a session. Delete that session first.`);
+      showToast(`"${teamToDelete.name}" is used in a match. Delete that match first.`);
       return;
     }
     const updated = teams.filter((_, idx) => idx !== teamIdx);
@@ -409,11 +409,11 @@ export default function MatchDetails() {
 
   const handleClearTeams = async () => {
     if (isCompleted) {
-      showToast('Cannot reset lineups for a completed match.');
+      showToast('Cannot reset lineups for a completed session.');
       return;
     }
     if (sessions.length > 0) {
-      showToast('Delete the sessions first, then you can clear the teams.');
+      showToast('Delete the matches first, then you can clear the teams.');
       return;
     }
     setTeams([]);
@@ -425,19 +425,19 @@ export default function MatchDetails() {
   // Auto-generate teams
   const handleAutoGenerateTeams = async () => {
     if (isCompleted) {
-      showToast('Cannot reallocate players for a completed match.');
+      showToast('Cannot reallocate players for a completed session.');
       return;
     }
     const allAvailableIds = [...squadPlayers.map((p) => p.id), ...guestPlayers.map((g) => g.id)];
     if (allAvailableIds.length === 0) {
-      showToast('No players or guests available for this match.');
+      showToast('No players or guests available for this session.');
       return;
     }
 
     const generated = generateTeams(allAvailableIds, numTeams, teams);
     const usedTeamIds = new Set(sessions.flatMap((x) => [x.teamAId, x.teamBId]));
     if ([...usedTeamIds].some((tid) => !generated.some((t) => t.id === tid))) {
-      showToast('Some teams are used in sessions. Keep at least that many teams, or delete those sessions first.');
+      showToast('Some teams are used in matches. Keep at least that many teams, or delete those matches first.');
       return;
     }
     setTeams(generated);
@@ -451,7 +451,7 @@ export default function MatchDetails() {
   // Guest Player Add / Remove
   const handleAddGuestPlayer = async (guestData) => {
     if (isCompleted) {
-      showToast('Cannot add guest players to a completed match.');
+      showToast('Cannot add guest players to a completed session.');
       return;
     }
     const newGuest = {
@@ -474,12 +474,12 @@ export default function MatchDetails() {
     }
 
     await matchService.saveTeams(match.id, updatedTeams, updatedGuests);
-    showToast(`Guest player "${newGuest.name}" added to match roster.`);
+    showToast(`Guest player "${newGuest.name}" added to session roster.`);
   };
 
   const handleRemoveGuestPlayer = async (guestId) => {
     if (isCompleted) {
-      showToast('Cannot remove guest players from a completed match.');
+      showToast('Cannot remove guest players from a completed session.');
       return;
     }
     const guest = guestPlayers.find((g) => g.id === guestId);
@@ -554,14 +554,15 @@ export default function MatchDetails() {
   const hasSessions = sessions.length > 0;
   const teamName = (tid) => teams.find((t) => t.id === tid)?.name || 'Removed team';
 
-  // Recording is only possible while the match is open and (with sessions) at least one
-  // session is not completed yet.
-  const openSessions = sessions.filter((x) => x.status !== 'completed');
-  const canRecordActivity = !isCompleted && (!hasSessions || openSessions.length > 0);
+  // With matches, activity can only be recorded for a match that is Active right now.
+  const activeSessions = sessions.filter((x) => x.status === 'active');
+  const canRecordActivity = !isCompleted && (!hasSessions || activeSessions.length > 0);
   const recordDisabledReason = isCompleted
-    ? 'Activity cannot be recorded for a completed match'
-    : hasSessions && openSessions.length === 0
-      ? 'All sessions are completed'
+    ? 'Activity cannot be recorded for a completed session'
+    : hasSessions && activeSessions.length === 0
+      ? sessions.every((x) => x.status === 'completed')
+        ? 'All matches are completed'
+        : 'Set a match to Active to record activity'
       : 'Record a goal or foul';
 
   const openActivity = (sessionId = '') => {
@@ -570,8 +571,9 @@ export default function MatchDetails() {
       return;
     }
     // default to the active session when recording from the header button
-    const fallback = openSessions.find((x) => x.status === 'active')?.id || '';
-    const requested = openSessions.some((x) => x.id === sessionId) ? sessionId : '';
+    // several matches can be active at once: only pre-select when there is exactly one
+    const fallback = activeSessions.length === 1 ? activeSessions[0].id : '';
+    const requested = activeSessions.some((x) => x.id === sessionId) ? sessionId : '';
     setActivitySessionId(requested || fallback);
     setIsActivityOpen(true);
   };
@@ -586,10 +588,10 @@ export default function MatchDetails() {
   const handleSaveSession = async ({ name, teamAId, teamBId }) => {
     if (sessionToEdit) {
       await matchService.updateSession(match.id, sessionToEdit.id, { name, teamAId, teamBId });
-      showToast('Session updated.');
+      showToast('Match updated.');
     } else {
       await matchService.addSession(match.id, { name, teamAId, teamBId });
-      showToast('Session added.');
+      showToast('Match added.');
     }
     await loadMatchData();
   };
@@ -602,9 +604,13 @@ export default function MatchDetails() {
     try {
       await matchService.setSessionStatus(match.id, session.id, status);
       await loadMatchData();
-      showToast(`"${session.name}" is now ${status}.`);
+      showToast(
+        status === 'upcoming'
+          ? `"${session.name}" is back to not started.`
+          : `"${session.name}" is now ${status}.`
+      );
     } catch (err) {
-      showToast(err.message || 'Failed to update session');
+      showToast(err.message || 'Failed to update match');
     }
   };
 
@@ -621,7 +627,7 @@ export default function MatchDetails() {
       await loadMatchData();
       showToast(`"${sessionToDelete.name}" deleted.`);
     } catch (err) {
-      showToast(err.message || 'Failed to delete session');
+      showToast(err.message || 'Failed to delete match');
     }
     setSessionToDelete(null);
   };
@@ -656,9 +662,9 @@ export default function MatchDetails() {
         score: scoreObj,
       }));
       setIsScoreModalOpen(false);
-      showToast(hasSessions ? 'Match marked completed.' : 'Match marked completed with score logged.');
+      showToast(hasSessions ? 'Session marked completed.' : 'Session marked completed with score logged.');
     } catch (err) {
-      showToast(err.message || 'Failed to complete match');
+      showToast(err.message || 'Failed to complete session');
     }
   };
 
@@ -680,16 +686,16 @@ export default function MatchDetails() {
 
   const handleDeleteMatch = async () => {
     if (isCompleted) {
-      showToast('Completed matches cannot be deleted.');
+      showToast('Completed sessions cannot be deleted.');
       setIsDeleteModalOpen(false);
       return;
     }
     try {
       await matchService.remove(match.id);
       // replace: the deleted match must not stay in the history stack
-      navigate('/matches', { replace: true });
+      navigate('/sessions', { replace: true });
     } catch (err) {
-      showToast(err.message || 'Failed to delete match');
+      showToast(err.message || 'Failed to delete session');
       setIsDeleteModalOpen(false);
     }
   };
@@ -697,7 +703,7 @@ export default function MatchDetails() {
   if (loading) {
     return (
       <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        Loading match details...
+        Loading session details...
       </div>
     );
   }
@@ -706,8 +712,8 @@ export default function MatchDetails() {
     return (
       <div className="placeholder-page-container">
         <div className="placeholder-content-card" style={{ textAlign: 'center' }}>
-          <h2>{error || 'Match Not Found'}</h2>
-          <Link to="/matches" className="btn-directive" style={{ marginTop: '16px', display: 'inline-flex' }}>
+          <h2>{error || 'Session Not Found'}</h2>
+          <Link to="/sessions" className="btn-directive" style={{ marginTop: '16px', display: 'inline-flex' }}>
             <ArrowLeft size={14} /> Back to Matches
           </Link>
         </div>
@@ -727,8 +733,8 @@ export default function MatchDetails() {
       {/* Header Bar */}
       <header className="dossier-header-bar">
         <nav className="dossier-breadcrumb" aria-label="Breadcrumb">
-          <Link to="/matches" className="breadcrumb-root" style={{ color: 'var(--forest-green)', textDecoration: 'none', fontWeight: 600 }}>
-            Matches
+          <Link to="/sessions" className="breadcrumb-root" style={{ color: 'var(--forest-green)', textDecoration: 'none', fontWeight: 600 }}>
+            Sessions
           </Link>
           <span className="breadcrumb-separator">/</span>
           <span className="breadcrumb-current">{match.title}</span>
@@ -754,7 +760,7 @@ export default function MatchDetails() {
               onClick={openScoreModal}
             >
               <CheckCircle size={15} />
-              <span>Complete Match</span>
+              <span>Complete Session</span>
             </button>
           ) : (
             <button
@@ -774,7 +780,7 @@ export default function MatchDetails() {
               onClick={() => setIsEditModalOpen(true)}
             >
               <Edit3 size={15} />
-              <span>Edit Match</span>
+              <span>Edit Session</span>
             </button>
           )}
 
@@ -918,10 +924,10 @@ export default function MatchDetails() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Activity size={18} style={{ color: 'var(--forest-green)' }} />
-                  <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>Match Activity</h2>
+                  <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>Session Activity</h2>
                 </div>
                 <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  Goals and fouls recorded for this match.
+                  Goals and fouls recorded for this session.
                 </p>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
@@ -929,14 +935,14 @@ export default function MatchDetails() {
                   <select
                     value={activityFilter}
                     onChange={(e) => setActivityFilter(e.target.value)}
-                    aria-label="Filter activity by session"
+                    aria-label="Filter activity by match"
                     style={{ padding: '5px 10px', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '12px', fontFamily: 'inherit', backgroundColor: '#fff', cursor: 'pointer' }}
                   >
-                    <option value="all">All sessions</option>
+                    <option value="all">All matches</option>
                     {sessions.map((x) => (
                       <option key={x.id} value={x.id}>{x.name}</option>
                     ))}
-                    <option value="match">Match-level (no session)</option>
+                    <option value="match">Session-level (no match)</option>
                   </select>
                 )}
                 <span style={{ padding: '4px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, backgroundColor: ACTIVITY_TYPES.goal.bg, color: ACTIVITY_TYPES.goal.color }}>
@@ -948,11 +954,7 @@ export default function MatchDetails() {
               </div>
             </div>
 
-            {Object.keys(goalsByTeam).length > 0 && (
-              <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                Goals by team: {Object.entries(goalsByTeam).map(([t, n]) => `${t} ${n}`).join(' · ')}
-              </p>
-            )}
+            
 
             {events.length === 0 ? (
               <div style={{ padding: '22px', textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)', backgroundColor: 'var(--bg-subtle)', borderRadius: '12px' }}>
@@ -989,7 +991,7 @@ export default function MatchDetails() {
                         )}
                         {ev.sessionId && (
                           <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginLeft: '8px', padding: '1px 7px', borderRadius: '999px', backgroundColor: '#fff', border: '1px solid var(--border-subtle)' }}>
-                            {sessions.find((x) => x.id === ev.sessionId)?.name || 'Deleted session'}
+                            {sessions.find((x) => x.id === ev.sessionId)?.name || 'Deleted match'}
                           </span>
                         )}
                       </div>
@@ -998,7 +1000,7 @@ export default function MatchDetails() {
                         onClick={() => handleRemoveActivity(ev.id)}
                         disabled={isEventLocked(ev)}
                         aria-label={`Remove ${cfg.label} by ${player ? player.name : 'player'}`}
-                        title={isEventLocked(ev) ? 'Locked: this session or match is completed' : 'Remove'}
+                        title={isEventLocked(ev) ? 'Locked: this match or session is completed' : 'Remove'}
                         style={{
                           background: 'none',
                           border: 'none',
@@ -1031,7 +1033,7 @@ export default function MatchDetails() {
             </div>
             <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
               {isCompleted
-                ? 'Official final lineups recorded for this match. Player allocation and rosters are locked.'
+                ? 'Official final lineups recorded for this session. Player allocation and rosters are locked.'
                 : 'Create teams manually or auto-generate, add guest trialists, and drag & drop players to assemble lineups.'}
             </p>
           </div>
@@ -1051,7 +1053,7 @@ export default function MatchDetails() {
                 fontWeight: 600
               }}>
                 <Lock size={13} />
-                <span>Lineups Locked (Match Completed)</span>
+                <span>Lineups Locked (Session Completed)</span>
               </div>
             ) : (
               <>
@@ -1741,7 +1743,7 @@ export default function MatchDetails() {
           onClose={() => setIsEditModalOpen(false)}
           onMatchSaved={() => {
             loadMatchData();
-            showToast('Match fixture details updated.');
+            showToast('Session details updated.');
           }}
         />
       )}
@@ -1750,12 +1752,12 @@ export default function MatchDetails() {
       {isScoreModalOpen && (
         <div className="modal-overlay-backdrop" role="dialog" aria-modal="true">
           <div className="modal-content-card" style={{ maxWidth: '400px' }}>
-            <h2 className="modal-heading" style={{ marginBottom: '8px' }}>{hasSessions ? 'Complete Match' : 'Log Final Match Score'}</h2>
+            <h2 className="modal-heading" style={{ marginBottom: '8px' }}>{hasSessions ? 'Complete Session' : 'Log Final Session Score'}</h2>
             <p className="modal-description">
               {hasSessions
-                ? 'This match has sessions, so the result comes from the league table.'
+                ? 'This session has matches, so the result comes from the league table.'
                 : recordedGoals.home + recordedGoals.away > 0
-                ? 'Score is pre-filled from the goals recorded in Match Activity. You can adjust it before confirming.'
+                ? 'Score is pre-filled from the goals recorded in Session Activity. You can adjust it before confirming.'
                 : 'Enter final result to mark fixture completed.'}
             </p>
 
@@ -1768,10 +1770,10 @@ export default function MatchDetails() {
                     const leader = table[0] && table[0].played > 0 ? table[0] : null;
                     return (
                       <>
-                        <div><strong>{done}</strong> of <strong>{sessions.length}</strong> sessions completed.</div>
+                        <div><strong>{done}</strong> of <strong>{sessions.length}</strong> matches completed.</div>
                         {done < sessions.length && (
                           <div style={{ padding: '8px 12px', borderRadius: '8px', backgroundColor: '#FFFBEB', color: '#92400E', fontWeight: 600 }}>
-                            Some sessions are not completed. They will not count in the league table, and sessions are locked once the match is completed.
+                            Some matches are not completed. They will not count in the league table, and matches are locked once the session is completed.
                           </div>
                         )}
                         {leader && (
@@ -1854,13 +1856,13 @@ export default function MatchDetails() {
       {/* Session delete confirmation */}
       <ConfirmDialog
         isOpen={!!sessionToDelete}
-        title="Delete Session"
+        title="Delete Match"
         message={
           sessionToDelete
-            ? `Delete "${sessionToDelete.name}"? ${(match.events || []).filter((e) => e.sessionId === sessionToDelete.id).length} recorded goal/foul entries for this session will be deleted too.`
+            ? `Delete "${sessionToDelete.name}"? ${(match.events || []).filter((e) => e.sessionId === sessionToDelete.id).length} recorded goal/foul entries for this match will be deleted too.`
             : ''
         }
-        confirmLabel="Delete Session"
+        confirmLabel="Delete Match"
         confirmVariant="danger"
         onCancel={() => setSessionToDelete(null)}
         onConfirm={handleDeleteSession}
@@ -1873,7 +1875,7 @@ export default function MatchDetails() {
           match={match}
           players={[...squadPlayers, ...guestPlayers.map((g) => ({ ...g, isGuest: true }))]}
           teams={teams}
-          sessions={openSessions}
+          sessions={activeSessions}
           defaultSessionId={activitySessionId}
           onClose={() => setIsActivityOpen(false)}
           onSave={handleSaveActivity}
@@ -1891,7 +1893,7 @@ export default function MatchDetails() {
           onClose={() => setIsRecordStatsOpen(false)}
           onStatsSaved={() => {
             loadMatchData();
-            showToast('Player match stats saved to ledger.');
+            showToast('Player session stats saved to ledger.');
           }}
         />
       )}
@@ -1899,9 +1901,9 @@ export default function MatchDetails() {
       {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={isDeleteModalOpen}
-        title="Delete Match Fixture"
-        message={`Are you sure you want to delete ${match.title}? All associated match stats and team rosters will be removed.`}
-        confirmLabel="Delete Match"
+        title="Delete Session"
+        message={`Are you sure you want to delete ${match.title}? All associated session stats and team rosters will be removed.`}
+        confirmLabel="Delete Session"
         confirmVariant="danger"
         onCancel={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteMatch}

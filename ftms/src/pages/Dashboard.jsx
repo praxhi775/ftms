@@ -65,7 +65,7 @@ export default function Dashboard() {
               Welcome back, Coach
             </h1>
             <p className="hero-subtitle">
-              Tactical board is synced, rosters are prepped, and pitch is cleared.
+              Tactical board is synced, rosters are prepped ({totalPlayers} registered), and pitch is cleared.
             </p>
           </div>
           
@@ -101,7 +101,7 @@ export default function Dashboard() {
                 </svg>
               </div>
               <h2 className="session-title">
-                {nextMatch ? `${nextMatch.date} ${nextMatch.time || '09:30'}` : 'No Upcoming Match'}
+                {nextMatch ? `${nextMatch.date} ${nextMatch.time || '09:30'}` : 'No Upcoming Session'}
               </h2>
             </div>
 
@@ -110,7 +110,7 @@ export default function Dashboard() {
             <p className="card-description session-description">
               {nextMatch
                 ? `${nextMatch.selectedPlayerIds?.length || 0} players selected.`
-                : 'Schedule your next training scrimmage or match to generate balanced teams.'}
+                : 'Schedule your next training scrimmage or session to generate balanced teams.'}
             </p>
 
             <div className="card-footer session-footer">
@@ -132,30 +132,30 @@ export default function Dashboard() {
                 <Bell size={20} className="bell-icon" strokeWidth={2.4} />
               </div>
               <h2 className="directive-title">
-                {recentCompleted ? 'Update Match Log & Stats' : 'Update Status After Match'}
+                {recentCompleted ? 'Update Session Log & Stats' : 'Update Status After Session'}
               </h2>
             </div>
 
             <p className="card-description directive-description">
               {recentCompleted
-                ? `Last match: ${recentCompleted.title} (${recentCompleted.score ? `${recentCompleted.score.home}-${recentCompleted.score.away}` : 'Completed'}). Record individual ratings & stats.`
-                : "Don't forget to record attendance, match outcome, and player statuses after the final whistle."}
+                ? `Last session: ${recentCompleted.title} (${recentCompleted.score ? `${recentCompleted.score.home}-${recentCompleted.score.away}` : 'Completed'}). Record individual ratings & stats.`
+                : "Don't forget to record attendance, session outcome, and player statuses after the final whistle."}
             </p>
 
             <div className="card-footer directive-footer">
               <button
                 type="button"
                 className="btn-directive"
-                onClick={() => navigate(recentCompleted ? `/matches/${recentCompleted.id}` : '/matches')}
-                aria-label="Update Status Now on Matches page"
+                onClick={() => navigate(recentCompleted ? `/sessions/${recentCompleted.id}` : '/sessions')}
+                aria-label="Update Status Now on Sessions page"
               >
-                <span>{recentCompleted ? 'Record Match Stats' : 'Update Status Now'}</span>
+                <span>{recentCompleted ? 'Record Session Stats' : 'Update Status Now'}</span>
                 <ExternalLink size={13} strokeWidth={2.2} aria-hidden="true" />
               </button>
               <button
                 type="button"
                 className="link-direct-entry"
-                onClick={() => navigate('/matches')}
+                onClick={() => navigate('/sessions')}
               >
                 All fixtures
               </button>
@@ -183,7 +183,7 @@ export default function Dashboard() {
             tabIndex={0}
             onClick={() => setIsNewMatchOpen(true)}
             onKeyDown={(e) => e.key === 'Enter' && setIsNewMatchOpen(true)}
-            aria-label="Open New match dialog"
+            aria-label="Open New session dialog"
           >
             <div className="action-card-header">
               <div className="action-icon-circle action-mint" aria-hidden="true">
@@ -204,7 +204,7 @@ export default function Dashboard() {
               </div>
               <Plus size={16} className="corner-icon" aria-hidden="true" />
             </div>
-            <h3 className="action-card-title">New match</h3>
+            <h3 className="action-card-title">New session</h3>
             <p className="action-card-desc">
               Pick squad &amp; generate balanced teams
             </p>
@@ -236,9 +236,9 @@ export default function Dashboard() {
             className="action-card"
             role="button"
             tabIndex={0}
-            onClick={() => navigate('/matches')}
-            onKeyDown={(e) => e.key === 'Enter' && navigate('/matches')}
-            aria-label="Navigate to Match history"
+            onClick={() => navigate('/sessions')}
+            onKeyDown={(e) => e.key === 'Enter' && navigate('/sessions')}
+            aria-label="Navigate to Session history"
           >
             <div className="action-card-header">
               <div className="action-icon-circle action-sand" aria-hidden="true">
@@ -260,7 +260,7 @@ export default function Dashboard() {
                 <path d="M9 3v18" />
               </svg>
             </div>
-            <h3 className="action-card-title">Match history</h3>
+            <h3 className="action-card-title">Session history</h3>
             <p className="action-card-desc">
               View past games, lineups &amp; scores
             </p>

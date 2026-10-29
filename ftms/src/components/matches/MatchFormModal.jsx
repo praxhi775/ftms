@@ -28,7 +28,7 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
         const squad = await playerService.getAll();
         setAvailablePlayers(squad);
       } catch (err) {
-        console.error('Failed to load squad for match:', err);
+        console.error('Failed to load squad for session:', err);
       }
     }
     if (isOpen) {
@@ -95,10 +95,10 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
 
     try {
       if (!formData.title.trim()) {
-        throw new Error('Match title or fixture name is required.');
+        throw new Error('Session title or fixture name is required.');
       }
       if (!formData.date) {
-        throw new Error('Match date is required.');
+        throw new Error('Session date is required.');
       }
       if (selectedPlayerIds.length === 0) {
         throw new Error('Please select at least one available player for the matchday squad.');
@@ -123,7 +123,7 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
       onMatchSaved();
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to save match fixture');
+      setError(err.message || 'Failed to save session');
     } finally {
       setIsSubmitting(false);
     }
@@ -144,21 +144,21 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
           <div className="modal-title-group">
             <Trophy size={18} className="modal-header-icon" />
             <h2 className="modal-heading">
-              {matchToEdit ? 'Edit Match Fixture' : 'Schedule New Match'}
+              {matchToEdit ? 'Edit Session' : 'Schedule New Session'}
             </h2>
           </div>
           <button
             type="button"
             className="btn-modal-close"
             onClick={onClose}
-            aria-label="Close match dialog"
+            aria-label="Close session dialog"
           >
             <X size={18} />
           </button>
         </div>
 
         <p className="modal-description">
-          Set up match details and hand-pick the available squad roster for team generation.
+          Set up session details and hand-pick the available squad roster for team generation.
         </p>
 
         {error && (
@@ -183,7 +183,7 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
           {/* Form Fields Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
             <div className="rating-input-field">
-              <label className="rating-field-label">Match Title *</label>
+              <label className="rating-field-label">Session Title *</label>
               <input
                 id="match-title-input"
                 autoFocus
@@ -257,7 +257,7 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
               >
                 <option value="Friendly">Friendly Scrimmage</option>
                 <option value="League">League Fixture</option>
-                <option value="Cup">Cup Match</option>
+                <option value="Cup">Cup</option>
                 <option value="Training">Tactical Drills</option>
               </select>
             </div>
@@ -416,7 +416,7 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
             <label className="rating-field-label">Tactical Notes / Directives</label>
             <textarea
               rows="2"
-              placeholder="e.g. Scrimmage rules, bib colors, pre-match focus..."
+              placeholder="e.g. Scrimmage rules, bib colors, pre-session focus..."
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               style={{
@@ -447,7 +447,7 @@ export default function MatchFormModal({ isOpen, onClose, onMatchSaved, matchToE
               disabled={isSubmitting}
             >
               <CheckCircle size={15} strokeWidth={2.4} />
-              <span>{isSubmitting ? 'Saving...' : matchToEdit ? 'Save Match' : 'Schedule Match'}</span>
+              <span>{isSubmitting ? 'Saving...' : matchToEdit ? 'Save Session' : 'Schedule Session'}</span>
             </button>
           </div>
         </form>

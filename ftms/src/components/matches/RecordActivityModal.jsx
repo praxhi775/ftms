@@ -55,7 +55,7 @@ export default function RecordActivityModal({
 
     const rest = players.filter((p) => !used.has(p.id));
     if (rest.length > 0) {
-      result.push({ label: teams.length > 0 ? 'Unassigned' : 'Match Squad', teamId: null, members: rest });
+      result.push({ label: teams.length > 0 ? 'Unassigned' : 'Session Squad', teamId: null, members: rest });
     }
     return result;
   }, [players, teams, hasSessions, selectedSession]);
@@ -66,7 +66,7 @@ export default function RecordActivityModal({
     e.preventDefault();
     setError('');
     if (hasSessions && !selectedSession) {
-      setError('Please select a session.');
+      setError('Please select a match.');
       return;
     }
     if (!playerId) {
@@ -128,7 +128,7 @@ export default function RecordActivityModal({
         </div>
 
         <p className="modal-description">
-          Log who scored a goal or committed a foul in {match?.title || 'this match'}{hasSessions ? ', for a specific session' : ''}.
+          Log who scored a goal or committed a foul in {match?.title || 'this session'}{hasSessions ? ', for a specific match' : ''}.
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -141,7 +141,7 @@ export default function RecordActivityModal({
           {/* Session (only when the match has sessions) */}
           {hasSessions && (
             <div className="rating-input-field">
-              <label htmlFor="activity-session" className="rating-field-label">Session</label>
+              <label htmlFor="activity-session" className="rating-field-label">Match</label>
               <select
                 id="activity-session"
                 value={sessionId}
@@ -151,13 +151,13 @@ export default function RecordActivityModal({
                 }}
                 style={{ ...fieldStyle, cursor: 'pointer' }}
               >
-                <option value="">Select session…</option>
+                <option value="">Select match…</option>
                 {sessions.map((x) => {
                   const a = teams.find((t) => t.id === x.teamAId)?.name || 'Removed team';
                   const b = teams.find((t) => t.id === x.teamBId)?.name || 'Removed team';
                   return (
                     <option key={x.id} value={x.id}>
-                      {x.name}: {a} vs {b} ({x.status})
+                      {x.name}: {a} vs {b}
                     </option>
                   );
                 })}
@@ -208,7 +208,7 @@ export default function RecordActivityModal({
               groups={groups}
               value={playerId}
               onChange={setPlayerId}
-              placeholder={hasSessions && !selectedSession ? 'Select a session first' : 'Search by name or jersey #…'}
+              placeholder={hasSessions && !selectedSession ? 'Select a match first' : 'Search by name or jersey #…'}
             />
           </div>
 

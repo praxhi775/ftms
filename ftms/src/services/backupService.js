@@ -62,7 +62,7 @@ export const backupService = {
 
     const { players, matches, statDefinitions, playerStats } = json.data;
     if (!Array.isArray(players) || !Array.isArray(matches)) {
-      throw new Error('Invalid backup data structure: players and matches must be lists.');
+      throw new Error('Invalid backup data structure: players and sessions must be lists.');
     }
 
     return {

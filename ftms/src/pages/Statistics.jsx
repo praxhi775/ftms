@@ -180,7 +180,7 @@ export default function Statistics() {
           <div className="stat-pill-card">
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Trophy size={14} style={{ color: 'var(--text-muted)' }} />
-              <span className="stat-label">Matches Completed</span>
+              <span className="stat-label">Sessions Completed</span>
             </div>
             <strong className="stat-value">{summaryMetrics.completedMatches} Logged</strong>
           </div>
@@ -357,7 +357,7 @@ export default function Statistics() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span className="submetric-calibrated-text">
-                  Trackable metrics for post-match player evaluation
+                  Trackable metrics for post-session player evaluation
                 </span>
                 <button
                   type="button"
@@ -404,7 +404,7 @@ export default function Statistics() {
                           const meta =
                             def.type === 'quantitative'
                               ? def.aggregate === 'average'
-                                ? 'Match rating · 1-100'
+                                ? 'Session rating · 1-100'
                                 : `Quantitative${def.unit ? ` · ${def.unit}` : ''}`
                               : `Qualitative · ${(def.choices || []).length} options`;
                           const tooltip = [
@@ -504,7 +504,7 @@ export default function Statistics() {
       <ConfirmDialog
         isOpen={!!defToDelete}
         title="Delete Statistic Dimension"
-        message={`Are you sure you want to delete "${defToDelete?.name}"? All historical match ratings logged under this statistic will be permanently removed.`}
+        message={`Are you sure you want to delete "${defToDelete?.name}"? All historical session ratings logged under this statistic will be permanently removed.`}
         confirmLabel="Delete Stat"
         confirmVariant="danger"
         onCancel={() => setDefToDelete(null)}

@@ -11,7 +11,7 @@ export default function Sidebar() {
   const navItems = [
     { to: '/', label: 'Home', icon: Home },
     { to: '/players', label: 'Squad Roster', icon: Users },
-    { to: '/matches', label: 'Matches', icon: Trophy },
+    { to: '/sessions', label: 'Sessions', icon: Trophy },
     { to: '/stats', label: 'Stats', icon: BarChart2 },
     { to: '/backup', label: 'Backup', icon: HardDrive },
   ];

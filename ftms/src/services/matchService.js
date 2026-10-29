@@ -29,8 +29,8 @@ export const matchService = {
   },
 
   async add(match) {
-    if (!match.title?.trim()) throw new Error('Match title is required.');
-    if (!match.date) throw new Error('Match date is required.');
+    if (!match.title?.trim()) throw new Error('Session title is required.');
+    if (!match.date) throw new Error('Session date is required.');
 
     return db.matches.add({
       title: match.title.trim(),
@@ -53,7 +53,7 @@ export const matchService = {
     const targetId = isNaN(numId) ? id : numId;
     const match = await db.matches.get(targetId);
     if (match && match.status === 'completed') {
-      throw new Error('Completed matches cannot be edited.');
+      throw new Error('Completed sessions cannot be edited.');
     }
     return db.matches.update(targetId, updates);
   },
@@ -73,7 +73,7 @@ export const matchService = {
     const targetId = isNaN(numId) ? id : numId;
     const match = await db.matches.get(targetId);
     if (match && match.status === 'completed') {
-      throw new Error('Cannot reallocate players or modify lineups for a completed match.');
+      throw new Error('Cannot reallocate players or modify lineups for a completed session.');
     }
     const updateObj = { teams };
     if (guestPlayers !== undefined) {
@@ -89,18 +89,21 @@ export const matchService = {
     const numId = Number(id);
     const targetId = isNaN(numId) ? id : numId;
     const match = await db.matches.get(targetId);
-    if (!match) throw new Error('Match not found.');
+    if (!match) throw new Error('Session not found.');
     if (match.status === 'completed') {
-      throw new Error('Activity cannot be recorded for a completed match.');
+      throw new Error('Activity cannot be recorded for a completed session.');
     }
     if (!event.playerId) throw new Error('Please select a player.');
     if (!['goal', 'foul'].includes(event.type)) throw new Error('Invalid activity type.');
 
     if (event.sessionId) {
       const session = (match.sessions || []).find((s) => s.id === event.sessionId);
-      if (!session) throw new Error('Session not found.');
+      if (!session) throw new Error('Match not found.');
       if (session.status === 'completed') {
         throw new Error(`"${session.name}" is completed. Activity can no longer be recorded for it.`);
+      }
+      if (session.status !== 'active') {
+        throw new Error(`"${session.name}" has not started. Set it to Active to record activity.`);
       }
     }
 
@@ -121,9 +124,9 @@ export const matchService = {
     const numId = Number(id);
     const targetId = isNaN(numId) ? id : numId;
     const match = await db.matches.get(targetId);
-    if (!match) throw new Error('Match not found.');
+    if (!match) throw new Error('Session not found.');
     if (match.status === 'completed') {
-      throw new Error('Activity cannot be deleted from a completed match.');
+      throw new Error('Activity cannot be deleted from a completed session.');
     }
     const event = (match.events || []).find((e) => e.id === eventId);
     const session = event?.sessionId ? (match.sessions || []).find((s) => s.id === event.sessionId) : null;
@@ -158,9 +161,9 @@ export const matchService = {
     const numId = Number(id);
     const targetId = isNaN(numId) ? id : numId;
     const match = await db.matches.get(targetId);
-    if (!match) throw new Error('Match not found.');
+    if (!match) throw new Error('Session not found.');
     if (match.status === 'completed') {
-      throw new Error('Sessions are locked once the match is completed.');
+      throw new Error('Matches are locked once the session is completed.');
     }
     return { match, targetId };
   },
@@ -168,9 +171,9 @@ export const matchService = {
   _validateSessionTeams(match, teamAId, teamBId) {
     const teams = match.teams || [];
     if (!teamAId || !teamBId) throw new Error('Please choose both teams.');
-    if (teamAId === teamBId) throw new Error('A session needs two different teams.');
+    if (teamAId === teamBId) throw new Error('A match needs two different teams.');
     if (!teams.some((t) => t.id === teamAId) || !teams.some((t) => t.id === teamBId)) {
-      throw new Error('Selected team no longer exists in this match.');
+      throw new Error('Selected team no longer exists in this session.');
     }
   },
 
@@ -180,7 +183,7 @@ export const matchService = {
     const sessions = match.sessions || [];
     const session = {
       id: newId('session'),
-      name: (name || '').trim() || `Session ${sessions.length + 1}`,
+      name: (name || '').trim() || `Match ${sessions.length + 1}`,
       teamAId,
       teamBId,
       status: 'upcoming',
@@ -195,12 +198,12 @@ export const matchService = {
     const { match, targetId } = await this._getOpenMatch(id);
     const sessions = match.sessions || [];
     const current = sessions.find((s) => s.id === sessionId);
-    if (!current) throw new Error('Session not found.');
+    if (!current) throw new Error('Match not found.');
     this._validateSessionTeams(match, teamAId, teamBId);
 
     const teamsChanged = current.teamAId !== teamAId || current.teamBId !== teamBId;
     if (teamsChanged && (match.events || []).some((e) => e.sessionId === sessionId)) {
-      throw new Error('Teams cannot be changed after activity has been recorded for this session.');
+      throw new Error('Teams cannot be changed after activity has been recorded for this match.');
     }
     const updated = sessions.map((s) =>
       s.id === sessionId
@@ -212,20 +215,14 @@ export const matchService = {
 
   async setSessionStatus(id, sessionId, status, score) {
     const { match, targetId } = await this._getOpenMatch(id);
-    if (!['upcoming', 'active', 'completed'].includes(status)) throw new Error('Invalid session status.');
+    if (!['upcoming', 'active', 'completed'].includes(status)) throw new Error('Invalid match status.');
     const sessions = match.sessions || [];
     const current = sessions.find((s) => s.id === sessionId);
-    if (!current) throw new Error('Session not found.');
+    if (!current) throw new Error('Match not found.');
 
-    if (status === 'active') {
-      const other = sessions.find((s) => s.status === 'active' && s.id !== sessionId);
-      if (other) {
-        throw new Error(`"${other.name}" is already active. Complete it or set it back to upcoming first.`);
-      }
-    }
     if (status === 'completed') {
       if (!score || isNaN(Number(score.home)) || isNaN(Number(score.away))) {
-        throw new Error('Please enter the final score for this session.');
+        throw new Error('Please enter the final score for this match.');
       }
     }
 
@@ -255,7 +252,7 @@ export const matchService = {
     const targetId = isNaN(numId) ? id : numId;
     const match = await db.matches.get(targetId);
     if (match && match.status === 'completed') {
-      throw new Error('Completed matches cannot be deleted.');
+      throw new Error('Completed sessions cannot be deleted.');
     }
     return db.transaction('rw', [db.matches, db.playerStats], async () => {
       await db.playerStats.where('matchId').equals(targetId).delete();

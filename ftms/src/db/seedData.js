@@ -22,8 +22,8 @@ const seedPlayers = [
 ];
 
 const seedStatDefinitions = [
-  { name: 'Goals', category: 'Technical', description: 'Goals scored in a match', type: 'quantitative', unit: '', inChart: true, choices: [] },
-  { name: 'Assists', category: 'Tactical', description: 'Assists provided in a match', type: 'quantitative', unit: '', inChart: true, choices: [] },
+  { name: 'Goals', category: 'Technical', description: 'Goals scored in a session', type: 'quantitative', unit: '', inChart: true, choices: [] },
+  { name: 'Assists', category: 'Tactical', description: 'Assists provided in a session', type: 'quantitative', unit: '', inChart: true, choices: [] },
   { name: 'Pass Accuracy', category: 'Technical', description: 'Passing accuracy percentage', type: 'quantitative', unit: '%', inChart: true, choices: [] },
   { name: 'Positioning', category: 'Tactical', description: 'Positional awareness and movement', type: 'qualitative', unit: '', inChart: true, choices: ['Poor', 'Average', 'Good', 'Excellent'] },
   { name: 'First Touch', category: 'Technical', description: 'Quality of first touch', type: 'qualitative', unit: '', inChart: false, choices: ['Poor', 'Average', 'Good', 'Excellent'] },

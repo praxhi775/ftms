@@ -44,7 +44,7 @@ export default function Matches() {
         setMatches(data);
       }
     } catch (err) {
-      console.error('Failed to load matches:', err);
+      console.error('Failed to load sessions:', err);
     } finally {
       setLoading(false);
     }
@@ -63,18 +63,18 @@ export default function Matches() {
   const handleConfirmDelete = async () => {
     if (!matchToDelete) return;
     if (matchToDelete.status === 'completed') {
-      showToast('Completed matches cannot be deleted.');
+      showToast('Completed sessions cannot be deleted.');
       setIsDeleteModalOpen(false);
       setMatchToDelete(null);
       return;
     }
     try {
       await matchService.remove(matchToDelete.id);
-      showToast(`Match "${matchToDelete.title}" deleted.`);
+      showToast(`Session "${matchToDelete.title}" deleted.`);
       loadMatches();
     } catch (err) {
-      console.error('Failed to delete match:', err);
-      showToast(err.message || 'Failed to delete match');
+      console.error('Failed to delete session:', err);
+      showToast(err.message || 'Failed to delete session');
     } finally {
       setIsDeleteModalOpen(false);
       setMatchToDelete(null);
@@ -94,9 +94,9 @@ export default function Matches() {
       <section className="welcome-hero-card" style={{ padding: '24px 28px' }}>
         <div className="hero-header-row" style={{ marginBottom: '16px' }}>
           <div className="hero-title-group">
-            <h1 className="hero-title" style={{ fontSize: '28px' }}>Matches &amp; Scrimmages</h1>
+            <h1 className="hero-title" style={{ fontSize: '28px' }}>Sessions &amp; Scrimmages</h1>
             <p className="hero-subtitle">
-              Schedule matchdays, generate balanced tactical teams, and log match outcomes.
+              Schedule matchdays, generate balanced tactical teams, and log session outcomes.
             </p>
           </div>
 
@@ -117,7 +117,7 @@ export default function Matches() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
             >
               <Plus size={16} />
-              <span>New Match</span>
+              <span>New Session</span>
             </button>
           </div>
         </div>
@@ -139,7 +139,7 @@ export default function Matches() {
               transition: 'all 0.15s ease',
             }}
           >
-            Upcoming Matches
+            Upcoming Sessions
           </button>
           <button
             type="button"
@@ -165,7 +165,7 @@ export default function Matches() {
       <section>
         {loading ? (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            Loading match ledger...
+            Loading session ledger...
           </div>
         ) : matches.length === 0 ? (
           <div className="placeholder-content-card" style={{ textAlign: 'center' }}>
@@ -173,12 +173,12 @@ export default function Matches() {
               <Trophy size={28} />
             </div>
             <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-              {activeTab === 'upcoming' ? 'No Upcoming Matches Scheduled' : 'No Completed Fixtures Yet'}
+              {activeTab === 'upcoming' ? 'No Upcoming Sessions Scheduled' : 'No Completed Fixtures Yet'}
             </h3>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '420px', margin: '0 auto 20px' }}>
               {activeTab === 'upcoming'
                 ? 'Pencil in your next training session or Sunday scrimmage to hand-pick available squads and generate balanced teams.'
-                : 'Completed matches and final scores will appear here once marked finished.'}
+                : 'Completed sessions and final scores will appear here once marked finished.'}
             </p>
             {activeTab === 'upcoming' && (
               <button
@@ -187,7 +187,7 @@ export default function Matches() {
                 onClick={() => setIsNewMatchOpen(true)}
               >
                 <Plus size={15} />
-                <span>Schedule First Match</span>
+                <span>Schedule First Session</span>
               </button>
             )}
           </div>
@@ -200,7 +200,7 @@ export default function Matches() {
               return (
                 <div
                   key={match.id}
-                  onClick={() => navigate(`/matches/${match.id}`)}
+                  onClick={() => navigate(`/sessions/${match.id}`)}
                   style={{
                     backgroundColor: '#fff',
                     borderRadius: '16px',
@@ -327,7 +327,7 @@ export default function Matches() {
                       {hasTeams ? `${match.teams.length} Teams Configured` : 'Teams Not Generated Yet'}
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600, color: 'var(--forest-green)' }}>
-                      <span>View Match</span>
+                      <span>View Session</span>
                       <ChevronRight size={14} />
                     </div>
                   </div>
@@ -344,16 +344,16 @@ export default function Matches() {
         onClose={() => setIsNewMatchOpen(false)}
         onMatchSaved={() => {
           loadMatches();
-          showToast('Match fixture scheduled.');
+          showToast('Session scheduled.');
         }}
       />
 
       {/* Delete Match Confirmation */}
       <ConfirmDialog
         isOpen={isDeleteModalOpen}
-        title={matchToDelete?.status === 'completed' ? 'Delete Completed Match' : 'Delete Match Fixture'}
-        message={`Are you sure you want to delete "${matchToDelete?.title}"? All associated match scores, player stats, and squad lineups will be permanently deleted.`}
-        confirmLabel="Delete Match"
+        title={matchToDelete?.status === 'completed' ? 'Delete Completed Session' : 'Delete Session'}
+        message={`Are you sure you want to delete "${matchToDelete?.title}"? All associated session scores, player stats, and squad lineups will be permanently deleted.`}
+        confirmLabel="Delete Session"
         confirmVariant="danger"
         onCancel={() => {
           setIsDeleteModalOpen(false);

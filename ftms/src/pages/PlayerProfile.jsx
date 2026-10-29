@@ -341,24 +341,24 @@ export default function PlayerProfile() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
             <Calendar size={18} style={{ color: 'var(--forest-green)' }} />
             <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Match Call-ups ({playerMatches.length})
+              Session Call-ups ({playerMatches.length})
             </h3>
           </div>
 
           {playerMatches.length === 0 ? (
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              No matches logged for this player yet.
+              No sessions logged for this player yet.
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {playerMatches.slice(0, 5).map((match) => (
                 <div
                   key={match.id}
-                  onClick={() => navigate(`/matches/${match.id}`)}
+                  onClick={() => navigate(`/sessions/${match.id}`)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      navigate(`/matches/${match.id}`);
+                      navigate(`/sessions/${match.id}`);
                     }
                   }}
                   tabIndex={0}
@@ -408,7 +408,7 @@ export default function PlayerProfile() {
 
           {Object.keys(playerStatsSummary).length === 0 ? (
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              No custom statistics recorded for this player yet. Stats are logged after completed matches.
+              No custom statistics recorded for this player yet. Stats are logged after completed sessions.
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -478,7 +478,7 @@ export default function PlayerProfile() {
       <ConfirmDialog
         isOpen={isDeleteDialogOpen}
         title="Delete Player Dossier"
-        message={`Are you sure you want to remove ${player.name} (#${player.jerseyNumber}) from your squad? Historical match records will preserve their presence.`}
+        message={`Are you sure you want to remove ${player.name} (#${player.jerseyNumber}) from your squad? Historical session records will preserve their presence.`}
         confirmLabel="Delete Player"
         confirmVariant="danger"
         onCancel={() => setIsDeleteDialogOpen(false)}

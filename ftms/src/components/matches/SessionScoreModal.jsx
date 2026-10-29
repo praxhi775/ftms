@@ -23,7 +23,7 @@ export default function SessionScoreModal({ isOpen, onClose, session, teamAName,
       await onConfirm({ home: Number(home), away: Number(away) });
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to complete session.');
+      setError(err.message || 'Failed to complete match.');
     }
   };
 
@@ -53,8 +53,8 @@ export default function SessionScoreModal({ isOpen, onClose, session, teamAName,
         </h2>
         <p className="modal-description">
           {hasRecordedGoals
-            ? 'Score is pre-filled from the goals recorded in this session. You can adjust it before confirming.'
-            : 'Enter the final score of this session.'}
+            ? 'Score is pre-filled from the goals recorded in this match. You can adjust it before confirming.'
+            : 'Enter the final score of this match.'}
         </p>
 
         <form onSubmit={handleSubmit}>

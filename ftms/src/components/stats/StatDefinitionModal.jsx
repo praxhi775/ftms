@@ -122,7 +122,7 @@ export default function StatDefinitionModal({ isOpen, onClose, onSaved, defToEdi
         </div>
 
         <p className="modal-description">
-          Define custom metrics with designated main categories to track player performance across matches.
+          Define custom metrics with designated main categories to track player performance across sessions.
         </p>
 
         {error && (

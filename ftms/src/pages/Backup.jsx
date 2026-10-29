@@ -120,7 +120,7 @@ export default function Backup() {
           <div className="hero-title-group">
             <h1 className="hero-title" style={{ fontSize: '28px' }}>Backup &amp; Data Restore</h1>
             <p className="hero-subtitle">
-              Export complete roster and match snapshots to JSON, or restore previous archives with transactional safety.
+              Export complete roster and session snapshots to JSON, or restore previous archives with transactional safety.
             </p>
           </div>
           <div className="squad-status-indicator desktop-status">
@@ -195,7 +195,7 @@ export default function Backup() {
           </div>
 
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            Export contains current players, tactical ratings, match schedules, generated team distributions, custom stat definitions, and recorded performance numbers.
+            Export contains current players, tactical ratings, session schedules, generated team distributions, custom stat definitions, and recorded performance numbers.
           </p>
 
           <div style={{
@@ -213,7 +213,7 @@ export default function Backup() {
               <strong>{storageInfo.playersCount}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Matches Recorded:</span>
+              <span>Sessions Recorded:</span>
               <strong>{storageInfo.matchesCount}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -328,7 +328,7 @@ export default function Backup() {
               </strong>
               <div>Schema Version: {backupSummary.schemaVersion}</div>
               <div>Players: {backupSummary.summary.playersCount}</div>
-              <div>Matches: {backupSummary.summary.matchesCount}</div>
+              <div>Sessions: {backupSummary.summary.matchesCount}</div>
               <div>Custom Stat Fields: {backupSummary.summary.statDefinitionsCount}</div>
               <div>Recorded Stats: {backupSummary.summary.playerStatsCount}</div>
 
@@ -350,7 +350,7 @@ export default function Backup() {
       <ConfirmDialog
         isOpen={isConfirmRestoreOpen}
         title="Confirm Database Restore"
-        message="Restoring from backup will REPLACE your current squad, matches, and stats with the contents of the backup file. This cannot be undone. Are you sure you wish to proceed?"
+        message="Restoring from backup will REPLACE your current squad, sessions, and stats with the contents of the backup file. This cannot be undone. Are you sure you wish to proceed?"
         confirmLabel={isRestoring ? 'Restoring...' : 'Confirm Replace & Restore'}
         confirmVariant="danger"
         onCancel={() => setIsConfirmRestoreOpen(false)}
