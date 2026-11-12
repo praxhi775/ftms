@@ -43,9 +43,9 @@ export default function Players() {
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
   useEffect(() => {
-    document.title = 'Squad Roster | Team Manager';
+    document.title = 'Squad Roster | FTMS';
     return () => {
-      document.title = 'Team Manager | Sunday Squad Notebook';
+      document.title = 'FTMS | Sunday Squad Notebook';
     };
   }, []);
 

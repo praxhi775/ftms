@@ -135,10 +135,10 @@ export default function PlayerProfile() {
 
   useEffect(() => {
     if (player?.name) {
-      document.title = `${player.name} (#${player.jerseyNumber || ''}) - Squad Roster | Team Manager`;
+      document.title = `${player.name} (#${player.jerseyNumber || ''}) - Squad Roster | FTMS`;
     }
     return () => {
-      document.title = 'Team Manager | Sunday Squad Notebook';
+      document.title = 'FTMS | Sunday Squad Notebook';
     };
   }, [player]);
 

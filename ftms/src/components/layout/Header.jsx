@@ -1,13 +1,17 @@
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../context/useAuth';
 import { 
   Home, 
   Users, 
   Trophy, 
   BarChart2, 
-  HardDrive 
+  HardDrive,
+  LogOut
 } from 'lucide-react';
+import AppLogo from '../common/AppLogo';
 
 export default function Header() {
+  const { logout } = useAuth();
   const navItems = [
     { to: '/', label: 'Home', icon: Home },
     { to: '/players', label: 'Squad Roster', icon: Users },
@@ -20,32 +24,21 @@ export default function Header() {
     <header className="mobile-header">
       <div className="mobile-header-top">
         <div className="mobile-brand">
-          <div className="brand-icon-box" aria-hidden="true">
-            <svg 
-              width="20" 
-              height="20" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2.2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            >
-              <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
-              <path d="M6 6h10" />
-              <path d="M6 10h10" />
-              <circle cx="11" cy="15" r="2" />
-            </svg>
-          </div>
+          <AppLogo size={36} />
           <div>
-            <h1 className="mobile-brand-title">Team Manager</h1>
+            <h1 className="mobile-brand-title">FTMS</h1>
             <span className="mobile-brand-subtitle">Sunday Squad notebook</span>
           </div>
         </div>
 
-        <div className="squad-status-indicator mobile-status">
-          <span className="status-dot" aria-hidden="true"></span>
-          <span className="status-label">Pitch Ready</span>
+        <div className="mobile-header-actions">
+          <div className="squad-status-indicator mobile-status">
+            <span className="status-dot" aria-hidden="true"></span>
+            <span className="status-label">Pitch Ready</span>
+          </div>
+          <button type="button" className="account-logout" onClick={logout} aria-label="Log out" title="Log out">
+            <LogOut size={16} />
+          </button>
         </div>
       </div>
 

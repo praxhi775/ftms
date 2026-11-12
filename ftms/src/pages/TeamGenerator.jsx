@@ -84,7 +84,7 @@ export default function TeamGenerator() {
   };
 
   useEffect(() => {
-    document.title = 'Manual Team Builder | Team Manager';
+    document.title = 'Manual Team Builder | FTMS';
     async function loadData() {
       try {
         setLoading(true);

@@ -1,13 +1,17 @@
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../context/useAuth';
 import { 
   Home, 
   Users, 
   Trophy, 
   BarChart2, 
-  HardDrive 
+  HardDrive,
+  LogOut
 } from 'lucide-react';
+import AppLogo from '../common/AppLogo';
 
 export default function Sidebar() {
+  const { profile, user, logout } = useAuth();
   const navItems = [
     { to: '/', label: 'Home', icon: Home },
     { to: '/players', label: 'Squad Roster', icon: Users },
@@ -20,27 +24,9 @@ export default function Sidebar() {
     <aside className="sidebar">
       {/* Brand Header */}
       <div className="sidebar-brand">
-        <div className="brand-icon-box" aria-hidden="true">
-          {/* Tactical notebook / pitch logo */}
-          <svg 
-            width="22" 
-            height="22" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2.2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-            className="brand-svg"
-          >
-            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
-            <path d="M6 6h10" />
-            <path d="M6 10h10" />
-            <circle cx="11" cy="15" r="2" />
-          </svg>
-        </div>
+        <AppLogo size={38} />
         <div className="brand-text">
-          <span className="brand-title">Team Manager</span>
+          <span className="brand-title">FTMS</span>
           <span className="brand-subtitle">Sunday Squad notebook</span>
         </div>
       </div>
@@ -68,8 +54,18 @@ export default function Sidebar() {
         </ul>
       </nav>
 
-      {/* Bottom Local Storage Indicator */}
+      {/* Bottom: account + local storage indicator */}
       <div className="sidebar-footer">
+        <div className="account-card">
+          <div className="account-text">
+            <span className="account-name">{profile?.name || user?.displayName || 'Manager'}</span>
+            <span className="account-email">{user?.email}</span>
+          </div>
+          <button type="button" className="account-logout" onClick={logout} aria-label="Log out" title="Log out">
+            <LogOut size={16} />
+          </button>
+        </div>
+
         <div className="local-storage-card">
           <div className="storage-status-row">
             <span className="storage-dot" aria-hidden="true"></span>

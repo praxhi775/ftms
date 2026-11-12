@@ -1,50 +1,30 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Sidebar from './components/layout/Sidebar';
-import Header from './components/layout/Header';
-import BackButton from './components/layout/BackButton';
-import LegacyMatchesRedirect from './components/layout/LegacyMatchesRedirect';
-import Dashboard from './pages/Dashboard';
-import Players from './pages/Players';
-import PlayerProfile from './pages/PlayerProfile';
-import Matches from './pages/Matches';
-import MatchDetails from './pages/MatchDetails';
-import Statistics from './pages/Statistics';
-import Backup from './pages/Backup';
-import TeamGenerator from './pages/TeamGenerator';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import AuthProvider from './context/AuthProvider';
+import { PublicOnly, RequireManager, RequireAdmin } from './components/auth/RouteGuards';
+import AppShell from './components/layout/AppShell';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import AdminHome from './pages/admin/AdminHome';
 import './App.css';
 
 export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <div className="app-layout">
-        {/* Persistent Desktop Sidebar */}
-        <Sidebar />
+      <AuthProvider>
+        <Routes>
+          {/* Public pages */}
+          <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
+          <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
+          <Route path="/forgot-password" element={<PublicOnly><ForgotPassword /></PublicOnly>} />
 
-        {/* Compact Mobile / Tablet Header */}
-        <Header />
+          {/* Admin area */}
+          <Route path="/admin" element={<RequireAdmin><AdminHome /></RequireAdmin>} />
 
-        {/* Main Content Area */}
-        <main className="main-viewport">
-          <div className="main-content-wrapper">
-            <BackButton />
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/players" element={<Players />} />
-              <Route path="/players/:id" element={<PlayerProfile />} />
-              <Route path="/sessions" element={<Matches />} />
-              <Route path="/sessions/:id" element={<MatchDetails />} />
-              <Route path="/matches" element={<LegacyMatchesRedirect />} />
-              <Route path="/matches/:id" element={<LegacyMatchesRedirect />} />
-              <Route path="/teams" element={<TeamGenerator />} />
-              <Route path="/team-generator" element={<TeamGenerator />} />
-              <Route path="/stats" element={<Statistics />} />
-              <Route path="/backup" element={<Backup />} />
-              {/* Fallback to Dashboard */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
-        </main>
-      </div>
+          {/* The squad app: active managers only */}
+          <Route path="/*" element={<RequireManager><AppShell /></RequireManager>} />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
