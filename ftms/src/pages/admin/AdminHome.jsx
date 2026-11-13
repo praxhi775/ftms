@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LogOut, ShieldOff, ShieldPlus, Search, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { LogOut, ShieldOff, ShieldPlus, Search, Users, History } from 'lucide-react';
 import AppLogo from '../../components/common/AppLogo';
 import { friendlyAuthError } from '../../firebase/authErrors';
 import { useAuth } from '../../context/useAuth';
@@ -9,11 +10,8 @@ import {
   setManagerStatus,
 } from '../../services/adminService';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { formatTimestamp as formatDate } from '../../utils/dates';
 
-const formatDate = (value) => {
-  const date = value?.toDate ? value.toDate() : null;
-  return date ? date.toLocaleString() : '—';
-};
 
 export default function AdminHome() {
   const { user, logout } = useAuth();
@@ -185,23 +183,32 @@ export default function AdminHome() {
                         )}
                       </td>
                       <td className="admin-td-action">
-                        {!isSelf && (
-                          <button
-                            type="button"
-                            className={isBlocked ? 'admin-btn-unblock' : 'admin-btn-block'}
-                            disabled={busyId === m.id}
-                            onClick={() =>
-                              setPending({
-                                manager: m,
-                                nextStatus: isBlocked ? MANAGER_STATUS.ACTIVE : MANAGER_STATUS.BLOCKED,
-                              })
-                            }
-                            aria-label={`${isBlocked ? 'Unblock' : 'Block'} ${m.name}`}
+                        <div className="admin-actions">
+                          <Link
+                            to={`/admin/managers/${m.id}`}
+                            className="admin-btn-activity"
+                            aria-label={`View activity of ${m.name}`}
                           >
-                            {isBlocked ? <ShieldPlus size={14} /> : <ShieldOff size={14} />}
-                            {busyId === m.id ? 'Saving…' : isBlocked ? 'Unblock' : 'Block'}
-                          </button>
-                        )}
+                            <History size={14} /> Activity
+                          </Link>
+                          {!isSelf && (
+                            <button
+                              type="button"
+                              className={isBlocked ? 'admin-btn-unblock' : 'admin-btn-block'}
+                              disabled={busyId === m.id}
+                              onClick={() =>
+                                setPending({
+                                  manager: m,
+                                  nextStatus: isBlocked ? MANAGER_STATUS.ACTIVE : MANAGER_STATUS.BLOCKED,
+                                })
+                              }
+                              aria-label={`${isBlocked ? 'Unblock' : 'Block'} ${m.name}`}
+                            >
+                              {isBlocked ? <ShieldPlus size={14} /> : <ShieldOff size={14} />}
+                              {busyId === m.id ? 'Saving…' : isBlocked ? 'Unblock' : 'Block'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -210,7 +217,6 @@ export default function AdminHome() {
             </table>
           </div>
         )}
-        <p className="admin-muted admin-note">The activity log arrives in the next step.</p>
       </section>
 
       <ConfirmDialog

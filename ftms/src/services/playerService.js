@@ -1,4 +1,11 @@
 import db from '../db/database';
+import { logActivity, logActivityCoalesced } from '../utils/activityLog';
+import {
+  profileChanges,
+  profileMessage,
+  subMetricChanges,
+  playerStatsMessage,
+} from '../utils/activityMessages';
 import { calcCategoryAvg } from '../utils/subMetricUtils';
 
 const POSITION_ORDER = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
@@ -93,10 +100,11 @@ export const playerService = {
     validatePhysical(player);
 
     const initialRatings = player.ratings || { pac: 50, sho: 50, pas: 50, dri: 50, def: 50, phy: 50 };
-    return db.players.add({
+    const jerseyNumber = normalizeJersey(player.jerseyNumber);
+    const id = await db.players.add({
       ...player,
       name: player.name.trim(),
-      jerseyNumber: normalizeJersey(player.jerseyNumber),
+      jerseyNumber,
       age: player.age ? Number(player.age) : null,
       height: player.height ? Number(player.height) : null,
       weight: player.weight ? Number(player.weight) : null,
@@ -105,9 +113,15 @@ export const playerService = {
       subMetrics: player.subMetrics || deriveSubMetricsFromRatings(initialRatings),
       createdAt: new Date().toISOString(),
     });
+    logActivity(
+      'player.added',
+      `Added player ${player.name.trim()}${jerseyNumber ? ` (#${jerseyNumber})` : ''}`
+    );
+    return id;
   },
 
-  async update(id, updates) {
+  // options.silent: do not log (automatic data fixes); options.message: custom log text
+  async update(id, updates, options = {}) {
     if (updates.name != null) {
       if (!updates.name.trim()) throw new Error('Player name is required.');
       if (updates.name.trim().length > 100) throw new Error('Player name cannot exceed 100 characters.');
@@ -130,11 +144,45 @@ export const playerService = {
       if (patch[key] === undefined) delete patch[key];
     });
 
-    return db.players.update(id, patch);
+    const before = options.silent ? null : await db.players.get(id);
+    const result = await db.players.update(id, patch);
+    if (!options.silent) {
+      const after = await db.players.get(id);
+      if (options.message) {
+        logActivity('player.updated', options.message);
+      } else if (before && after) {
+        // profile fields: "Status active → injured"
+        const changes = profileChanges(before, after);
+        if (changes.length) logActivity('player.updated', profileMessage(after.name, changes));
+
+        // stats: which sub-metrics changed and the overall rating, combined while the user keeps editing
+        if (patch.subMetrics) {
+          logActivityCoalesced(
+            `player-stats-${id}`,
+            'player.stats_changed',
+            {
+              before: { ovr: calcOverall(before), subMetrics: before.subMetrics },
+              after: { ovr: calcOverall(after), subMetrics: after.subMetrics },
+              ctx: { name: after.name },
+            },
+            (first, last, ctx) => {
+              const statChanges = subMetricChanges(first.subMetrics, last.subMetrics);
+              return statChanges.length
+                ? playerStatsMessage(ctx.name, first.ovr, last.ovr, statChanges)
+                : null;
+            }
+          );
+        }
+      }
+    }
+    return result;
   },
 
   async remove(id) {
-    return db.players.delete(id);
+    const player = await db.players.get(id);
+    const result = await db.players.delete(id);
+    logActivity('player.deleted', `Deleted player ${player?.name || ''}`.trim());
+    return result;
   },
 
   async count() {

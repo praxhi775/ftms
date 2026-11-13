@@ -98,14 +98,14 @@ export default function PlayerProfile() {
         const normalized = normalizeSubMetrics(ensureAgilityMetric(data.subMetrics));
         setCategories(normalized);
         if (JSON.stringify(normalized) !== JSON.stringify(data.subMetrics)) {
-          playerService.update(playerId, { subMetrics: normalized }).catch((err) => {
+          playerService.update(playerId, { subMetrics: normalized }, { silent: true }).catch((err) => {
             console.error('Failed to migrate subMetrics to numeric:', err);
           });
         }
       } else {
         const initialSubs = deriveSubMetricsFromRatings(data.ratings);
         setCategories(initialSubs);
-        playerService.update(playerId, { subMetrics: initialSubs }).catch((err) => {
+        playerService.update(playerId, { subMetrics: initialSubs }, { silent: true }).catch((err) => {
           console.error('Failed to initialize subMetrics on player:', err);
         });
       }

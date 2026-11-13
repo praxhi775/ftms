@@ -6,6 +6,7 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import AdminHome from './pages/admin/AdminHome';
+import ManagerActivity from './pages/admin/ManagerActivity';
 import './App.css';
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
 
           {/* Admin area */}
           <Route path="/admin" element={<RequireAdmin><AdminHome /></RequireAdmin>} />
+          <Route path="/admin/managers/:id" element={<RequireAdmin><ManagerActivity /></RequireAdmin>} />
 
           {/* The squad app: active managers only */}
           <Route path="/*" element={<RequireManager><AppShell /></RequireManager>} />

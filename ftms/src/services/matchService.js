@@ -1,5 +1,59 @@
 import db from '../db/database';
 import { newId, newTeamId } from '../utils/sessionUtils';
+import { logActivity, logActivityCoalesced } from '../utils/activityLog';
+import { lineupChanges, lineupMessage } from '../utils/activityMessages';
+
+// Activity log for team / lineup changes. Several quick changes (dragging players around)
+// become one entry; guests being added or removed are logged straight away.
+async function logLineupChange(match, newTeams, newGuests) {
+  const beforeTeams = match.teams || [];
+  const beforeGuests = match.guestPlayers || [];
+  const afterGuests = newGuests !== undefined ? newGuests : beforeGuests;
+
+  // player names for the message
+  const names = {};
+  [...beforeGuests, ...afterGuests].forEach((g) => { names[g.id] = `${g.name} (guest)`; });
+  const squadIds = new Set();
+  [...beforeTeams, ...(newTeams || [])].forEach((t) =>
+    (t.playerIds || []).forEach((pid) => { if (!(pid in names)) squadIds.add(pid); })
+  );
+  const ids = [...squadIds].filter((pid) => typeof pid === 'number');
+  if (ids.length) {
+    const rows = await db.players.bulkGet(ids);
+    rows.forEach((p, i) => { if (p) names[ids[i]] = p.name; });
+  }
+
+  logActivityCoalesced(
+    `lineup-${match.id}`,
+    'team.lineup_updated',
+    { before: beforeTeams, after: newTeams || [], ctx: { names, title: match.title } },
+    (first, last, ctx) => {
+      const changes = lineupChanges(first, last, (pid) => ctx.names[pid] || 'A player');
+      return changes.length ? lineupMessage(ctx.title, changes) : null;
+    }
+  );
+
+  if (newGuests !== undefined) {
+    const beforeIds = new Set(beforeGuests.map((g) => g.id));
+    const afterIds = new Set(afterGuests.map((g) => g.id));
+    afterGuests.filter((g) => !beforeIds.has(g.id)).forEach((g) =>
+      logActivity('guest.added', `Added guest player ${g.name} to session "${match.title}"`)
+    );
+    beforeGuests.filter((g) => !afterIds.has(g.id)).forEach((g) =>
+      logActivity('guest.removed', `Removed guest player ${g.name} from session "${match.title}"`)
+    );
+  }
+}
+
+// Names used in the activity log messages
+const teamNameIn = (match, teamId) => (match.teams || []).find((t) => t.id === teamId)?.name || 'a team';
+const matchLabel = (session) => `"${session.name}"`;
+async function playerNameFor(match, playerId) {
+  const guest = (match.guestPlayers || []).find((g) => g.id === playerId);
+  if (guest) return `${guest.name} (guest)`;
+  const player = await db.players.get(playerId);
+  return player?.name || 'a player';
+}
 
 export const matchService = {
   async getAll() {
@@ -32,7 +86,7 @@ export const matchService = {
     if (!match.title?.trim()) throw new Error('Session title is required.');
     if (!match.date) throw new Error('Session date is required.');
 
-    return db.matches.add({
+    const createdId = await db.matches.add({
       title: match.title.trim(),
       date: match.date,
       time: match.time || '',
@@ -46,6 +100,8 @@ export const matchService = {
       notes: match.notes?.trim() || '',
       createdAt: new Date().toISOString(),
     });
+    logActivity('session.created', `Created session "${match.title.trim()}" on ${match.date}`);
+    return createdId;
   },
 
   async update(id, updates) {
@@ -55,17 +111,26 @@ export const matchService = {
     if (match && match.status === 'completed') {
       throw new Error('Completed sessions cannot be edited.');
     }
-    return db.matches.update(targetId, updates);
+    const result = await db.matches.update(targetId, updates);
+    const after = await db.matches.get(targetId);
+    logActivity('session.updated', `Updated session "${after?.title || match?.title || ''}"`);
+    return result;
   },
 
   async completeMatch(id, score, notes) {
     const numId = Number(id);
     const targetId = isNaN(numId) ? id : numId;
-    return db.matches.update(targetId, {
+    const before = await db.matches.get(targetId);
+    const result = await db.matches.update(targetId, {
       status: 'completed',
       score,
       notes: notes || '',
     });
+    logActivity(
+      'session.completed',
+      `Completed session "${before?.title || ''}"${score ? ` (score ${score.home}-${score.away})` : ''}`
+    );
+    return result;
   },
 
   async saveTeams(id, teams, guestPlayers) {
@@ -79,7 +144,9 @@ export const matchService = {
     if (guestPlayers !== undefined) {
       updateObj.guestPlayers = guestPlayers;
     }
-    return db.matches.update(targetId, updateObj);
+    const result = await db.matches.update(targetId, updateObj);
+    if (match) await logLineupChange(match, teams, guestPlayers);
+    return result;
   },
 
   // ---- Match activity log (goals, fouls) ----
@@ -117,6 +184,15 @@ export const matchService = {
       createdAt: new Date().toISOString(),
     };
     await db.matches.update(targetId, { events: [...(match.events || []), newEvent] });
+    {
+      const session = (match.sessions || []).find((s) => s.id === newEvent.sessionId);
+      const who = await playerNameFor(match, newEvent.playerId);
+      logActivity(
+        `${newEvent.type}.recorded`,
+        `Recorded a ${newEvent.type} for ${who}${session ? ` in match ${matchLabel(session)}` : ''}` +
+          `${newEvent.minute != null ? ` at ${newEvent.minute}'` : ''} (session "${match.title}")`
+      );
+    }
     return newEvent;
   },
 
@@ -133,9 +209,17 @@ export const matchService = {
     if (session && session.status === 'completed') {
       throw new Error(`"${session.name}" is completed. Its activity can no longer be deleted.`);
     }
-    return db.matches.update(targetId, {
+    const result = await db.matches.update(targetId, {
       events: (match.events || []).filter((e) => e.id !== eventId),
     });
+    if (event) {
+      const who = await playerNameFor(match, event.playerId);
+      logActivity(
+        `${event.type}.removed`,
+        `Removed a ${event.type} for ${who}${session ? ` in match ${matchLabel(session)}` : ''} (session "${match.title}")`
+      );
+    }
+    return result;
   },
 
   // ---- Teams: make sure each team has a stable id (sessions refer to teams by id) ----
@@ -191,6 +275,10 @@ export const matchService = {
       createdAt: new Date().toISOString(),
     };
     await db.matches.update(targetId, { sessions: [...sessions, session] });
+    logActivity(
+      'match.added',
+      `Added match ${matchLabel(session)} (${teamNameIn(match, teamAId)} vs ${teamNameIn(match, teamBId)}) to session "${match.title}"`
+    );
     return session;
   },
 
@@ -211,6 +299,10 @@ export const matchService = {
         : s
     );
     await db.matches.update(targetId, { sessions: updated });
+    logActivity(
+      'match.updated',
+      `Updated match ${matchLabel(updated.find((s) => s.id === sessionId))} in session "${match.title}"`
+    );
   },
 
   async setSessionStatus(id, sessionId, status, score) {
@@ -236,6 +328,17 @@ export const matchService = {
       };
     });
     await db.matches.update(targetId, { sessions: updated });
+    const label = matchLabel(current);
+    if (status === 'completed') {
+      logActivity(
+        'match.completed',
+        `Completed match ${label}: ${teamNameIn(match, current.teamAId)} ${Number(score.home)}-${Number(score.away)} ${teamNameIn(match, current.teamBId)} (session "${match.title}")`
+      );
+    } else if (status === 'active') {
+      logActivity('match.started', `Started match ${label} (session "${match.title}")`);
+    } else {
+      logActivity('match.reset', `Set match ${label} back to not started (session "${match.title}")`);
+    }
   },
 
   async removeSession(id, sessionId) {
@@ -245,6 +348,8 @@ export const matchService = {
       // the session's recorded goals and fouls go with it
       events: (match.events || []).filter((e) => e.sessionId !== sessionId),
     });
+    const removed = (match.sessions || []).find((s) => s.id === sessionId);
+    if (removed) logActivity('match.deleted', `Deleted match ${matchLabel(removed)} from session "${match.title}"`);
   },
 
   async remove(id) {
@@ -254,10 +359,12 @@ export const matchService = {
     if (match && match.status === 'completed') {
       throw new Error('Completed sessions cannot be deleted.');
     }
-    return db.transaction('rw', [db.matches, db.playerStats], async () => {
+    const result = await db.transaction('rw', [db.matches, db.playerStats], async () => {
       await db.playerStats.where('matchId').equals(targetId).delete();
       await db.matches.delete(targetId);
     });
+    logActivity('session.deleted', `Deleted session "${match?.title || ''}"`);
+    return result;
   },
 
   async count() {

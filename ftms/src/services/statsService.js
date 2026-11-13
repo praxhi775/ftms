@@ -1,4 +1,5 @@
 import db from '../db/database';
+import { logActivity } from '../utils/activityLog';
 
 // The same sub-metrics that appear on every player profile, as per-match statistics.
 const STAT_CATEGORIES = ['Physical', 'Tactical', 'Technical'];
@@ -83,7 +84,7 @@ export const statsService = {
     if (!def.name?.trim()) throw new Error('Stat name is required.');
     if (!def.type) throw new Error('Stat type is required.');
 
-    return db.statDefinitions.add({
+    const newDefId = await db.statDefinitions.add({
       name: def.name.trim(),
       description: def.description?.trim() || '',
       category: def.category?.trim() || 'General',
@@ -92,20 +93,28 @@ export const statsService = {
       inChart: def.inChart ? 1 : 0,
       choices: def.type === 'qualitative' ? (def.choices || []) : [],
     });
+    logActivity('stat.created', `Added statistic "${def.name.trim()}"`);
+    return newDefId;
   },
 
   async updateDefinition(id, updates) {
     const data = { ...updates };
     if (data.inChart !== undefined) data.inChart = data.inChart ? 1 : 0;
     if (data.category) data.category = data.category.trim();
-    return db.statDefinitions.update(id, data);
+    const result = await db.statDefinitions.update(id, data);
+    const def = await db.statDefinitions.get(id);
+    logActivity('stat.updated', `Updated statistic "${def?.name || ''}"`);
+    return result;
   },
 
   async removeDefinition(id) {
-    return db.transaction('rw', [db.statDefinitions, db.playerStats], async () => {
+    const def = await db.statDefinitions.get(id);
+    const result = await db.transaction('rw', [db.statDefinitions, db.playerStats], async () => {
       await db.playerStats.where('statDefId').equals(id).delete();
       await db.statDefinitions.delete(id);
     });
+    logActivity('stat.deleted', `Deleted statistic "${def?.name || ''}"`);
+    return result;
   },
 
   // ---- Player Stats ----
@@ -146,11 +155,17 @@ export const statsService = {
 
   async saveMatchStats(matchId, statsArray) {
     // statsArray: [{ playerId, statDefId, value }]
-    return db.transaction('rw', db.playerStats, async () => {
+    const result = await db.transaction('rw', db.playerStats, async () => {
       for (const stat of statsArray) {
         await statsService.saveStat(matchId, stat.playerId, stat.statDefId, stat.value);
       }
     });
+    const session = await db.matches.get(matchId);
+    logActivity(
+      'stats.recorded',
+      `Recorded stats for session "${session?.title || ''}" (${statsArray.length} ${statsArray.length === 1 ? 'entry' : 'entries'})`
+    );
+    return result;
   },
 
   // ---- Aggregations ----

@@ -1,4 +1,5 @@
 import db from '../db/database';
+import { logActivity } from '../utils/activityLog';
 
 export const backupService = {
   /**
@@ -45,6 +46,10 @@ export const backupService = {
 
     // Record last backup timestamp in settings
     await db.settings.put({ key: 'lastBackup', value: new Date().toISOString() });
+    logActivity(
+      'backup.exported',
+      `Exported a backup (${(backup.data.players || []).length} players, ${(backup.data.matches || []).length} sessions)`
+    );
     return backup;
   },
 
@@ -107,6 +112,7 @@ export const backupService = {
       await db.settings.put({ key: 'lastRestored', value: new Date().toISOString() });
     });
 
+    logActivity('backup.imported', `Imported a backup (${players.length} players, ${matches.length} sessions)`);
     return true;
   },
 

@@ -13,6 +13,17 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // One activity log entry: exactly these four fields, saved with the server time, by the person writing it
+    function validEntry() {
+      return request.resource.data.keys().hasOnly(['type', 'message', 'at', 'actorId'])
+        && request.resource.data.type is string
+        && request.resource.data.type.size() <= 40
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 200
+        && request.resource.data.at == request.time
+        && request.resource.data.actorId == request.auth.uid;
+    }
+
     function isActiveManager() {
       return signedIn() &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active';
@@ -37,11 +48,11 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(
              ['name', 'email', 'role', 'status', 'createdAt', 'lastLoginAt']);
 
-      // a manager may only update their own last-login time, and not while blocked;
+      // a manager may only update their own last-login / last-active time, and not while blocked;
       // the admin may only change status (block / unblock)
       allow update: if
         (signedIn() && request.auth.uid == uid && isActiveManager()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLoginAt']))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLoginAt', 'lastActiveAt']))
         ||
         (isAdmin()
           && request.resource.data.diff(resource.data).affectedKeys()
@@ -50,9 +61,13 @@ service cloud.firestore {
 
       allow delete: if false;
 
-      // activity log (used in a later step): managers can add entries but never edit or delete them
+      // Activity log: a manager can add entries to their own log but never edit or delete them.
+      // The admin can read every log and can add only the "blocked" / "unblocked" entries.
       match /activity/{entryId} {
-        allow create: if signedIn() && request.auth.uid == uid && isActiveManager();
+        allow create: if validEntry() && (
+          (signedIn() && request.auth.uid == uid && isActiveManager())
+          || (isAdmin() && request.resource.data.type in ['account.blocked', 'account.unblocked'])
+        );
         allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
         allow update, delete: if false;
       }
