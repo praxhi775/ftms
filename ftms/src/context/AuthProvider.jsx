@@ -266,7 +266,10 @@ export default function AuthProvider({ children }) {
     await signOut(auth);
   }, []);
 
-  const resetPassword = useCallback((email) => sendPasswordResetEmail(auth, email.trim()), []);
+  const resetPassword = useCallback(
+    (email) => sendPasswordResetEmail(auth, email.trim()),
+    []
+  );
 
   const value = useMemo(
     () => ({

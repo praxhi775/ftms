@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
 import { friendlyAuthError } from '../../firebase/authErrors';
@@ -14,6 +15,8 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [searchParams] = useSearchParams();
+  const passwordWasReset = searchParams.get('reset') === 'success';
 
   useEffect(() => {
     document.title = 'Log in | FTMS';
@@ -72,6 +75,11 @@ export default function Login() {
           <p className="login-subtitle">Sign in to manage your squad.</p>
 
           <form onSubmit={handleSubmit} className="login-form">
+            {passwordWasReset && !error && (
+              <div className="auth-success" role="status">
+                Your password has been updated. Log in with your new password.
+              </div>
+            )}
             <AuthError message={error} />
 
             <div className="login-field">

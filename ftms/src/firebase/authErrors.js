@@ -11,6 +11,11 @@ const MESSAGES = {
   'auth/network-request-failed': 'Network problem. Check your connection and try again.',
   'auth/user-disabled': 'This account has been disabled.',
   'auth/operation-not-allowed': 'Email/password sign-in is not enabled for this project yet.',
+  'auth/missing-email': 'Please enter your email address.',
+  'auth/expired-action-code': 'This reset link has expired. Please request a new one.',
+  'auth/invalid-action-code': 'This reset link is invalid or has already been used. Please request a new one.',
+  'auth/unauthorized-continue-uri': 'This site is not authorized to send reset links. Add its domain under Firebase Authentication > Settings > Authorized domains.',
+  'auth/invalid-continue-uri': 'The redirect link for the reset email is invalid.',
   'permission-denied': 'You do not have permission to do that.',
 };
 

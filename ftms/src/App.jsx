@@ -5,6 +5,7 @@ import AppShell from './components/layout/AppShell';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import AdminHome from './pages/admin/AdminHome';
 import ManagerActivity from './pages/admin/ManagerActivity';
 import './App.css';
@@ -18,6 +19,9 @@ export default function App() {
           <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
           <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
           <Route path="/forgot-password" element={<PublicOnly><ForgotPassword /></PublicOnly>} />
+
+          {/* Opened from the reset email, so it must work whether or not someone is signed in */}
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Admin area */}
           <Route path="/admin" element={<RequireAdmin><AdminHome /></RequireAdmin>} />

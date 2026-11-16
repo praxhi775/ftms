@@ -39,7 +39,12 @@ export default function ForgotPassword() {
       {sent ? (
         <div className="auth-success" role="status">
           If an account exists for <strong>{email.trim()}</strong>, a reset link is on its way.
-          Check your inbox (and spam folder).
+          Check your inbox (and spam folder). The link works once and expires after about an hour.
+          <div style={{ marginTop: 10 }}>
+            <button type="button" className="auth-btn-secondary" onClick={() => setSent(false)}>
+              Use a different email
+            </button>
+          </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="auth-form">
