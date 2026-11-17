@@ -156,13 +156,20 @@ export const playerService = {
         if (changes.length) logActivity('player.updated', profileMessage(after.name, changes));
 
         // stats: which sub-metrics changed and the overall rating, combined while the user keeps editing
-        if (patch.subMetrics) {
+        if (patch.subMetrics || patch.ratings) {
+          const beforeSubs = (before.subMetrics && before.subMetrics.length > 0)
+            ? before.subMetrics
+            : deriveSubMetricsFromRatings(before.ratings || {});
+          const afterSubs = (after.subMetrics && after.subMetrics.length > 0)
+            ? after.subMetrics
+            : deriveSubMetricsFromRatings(after.ratings || {});
+
           logActivityCoalesced(
-            `player-stats-${id}`,
+            'player-stats-' + id,
             'player.stats_changed',
             {
-              before: { ovr: calcOverall(before), subMetrics: before.subMetrics },
-              after: { ovr: calcOverall(after), subMetrics: after.subMetrics },
+              before: { ovr: calcOverall(before), subMetrics: beforeSubs },
+              after: { ovr: calcOverall(after), subMetrics: afterSubs },
               ctx: { name: after.name },
             },
             (first, last, ctx) => {

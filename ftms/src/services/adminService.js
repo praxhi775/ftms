@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { firestore } from '../firebase/client';
 import { writeActivity } from '../firebase/activityWriter';
+import { toDate } from '../utils/dates';
 
 export const MANAGER_STATUS = { ACTIVE: 'active', BLOCKED: 'blocked' };
 
@@ -80,5 +81,74 @@ export async function fetchActivityPage(managerId, { pageSize = ACTIVITY_PAGE_SI
     entries: snapshot.docs.map((d) => ({ id: d.id, ...d.data() })),
     cursor: snapshot.docs[snapshot.docs.length - 1] || null,
     hasMore: snapshot.docs.length === pageSize,
+  };
+}
+
+/**
+ * Fetches activity logs across all managers (or for a specific manager),
+ * newest first, with manager details attached to each entry.
+ */
+export async function fetchAllActivityLogs({
+  managers = [],
+  managerId = 'all',
+  from = null,
+  to = null,
+  limitPerManager = ACTIVITY_PAGE_SIZE,
+} = {}) {
+  if (managerId && managerId !== 'all') {
+    const page = await fetchActivityPage(managerId, { pageSize: limitPerManager, from, to });
+    const mgr = managers.find((m) => m.id === managerId);
+    return {
+      entries: page.entries.map((e) => ({
+        ...e,
+        managerId,
+        managerName: mgr?.name || 'Manager',
+        managerEmail: mgr?.email || '',
+      })),
+      hasMore: page.hasMore,
+    };
+  }
+
+  let targetManagers = managers;
+  if (!targetManagers || targetManagers.length === 0) {
+    const snap = await getDocs(query(collection(firestore, 'users'), orderBy('createdAt', 'desc')));
+    targetManagers = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+
+  const constraints = [orderBy('at', 'desc')];
+  if (from) constraints.push(where('at', '>=', Timestamp.fromDate(from)));
+  if (to) constraints.push(where('at', '<=', Timestamp.fromDate(to)));
+  constraints.push(limit(limitPerManager));
+
+  const promises = targetManagers.map(async (m) => {
+    try {
+      const snap = await getDocs(
+        query(collection(firestore, 'users', m.id, 'activity'), ...constraints)
+      );
+      return snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        managerId: m.id,
+        managerName: m.name || m.email?.split('@')[0] || 'Manager',
+        managerEmail: m.email || '',
+      }));
+    } catch (err) {
+      console.warn(`Could not fetch activity for manager ${m.id}:`, err);
+      return [];
+    }
+  });
+
+  const allResults = await Promise.all(promises);
+  const flat = allResults.flat();
+
+  flat.sort((a, b) => {
+    const timeA = toDate(a.at)?.getTime() || 0;
+    const timeB = toDate(b.at)?.getTime() || 0;
+    return timeB - timeA;
+  });
+
+  return {
+    entries: flat,
+    hasMore: false,
   };
 }

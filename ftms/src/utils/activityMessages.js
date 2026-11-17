@@ -57,7 +57,7 @@ export const profileMessage = (name, changes) => fitList(`Updated profile of ${n
 // ---------- player stats (sub-metric ratings) ----------
 const metricMap = (categories = []) => {
   const map = new Map();
-  categories.forEach((cat) =>
+  (categories || []).forEach((cat) =>
     (cat.metrics || []).forEach((m) =>
       map.set(m.name, { value: Number.parseInt(m.value, 10), inChart: !!m.inChart })
     )
@@ -65,25 +65,54 @@ const metricMap = (categories = []) => {
   return map;
 };
 
-export function subMetricChanges(beforeCategories, afterCategories) {
+export function subMetricChanges(beforeCategories = [], afterCategories = []) {
   const before = metricMap(beforeCategories);
   const after = metricMap(afterCategories);
   const changes = [];
   after.forEach((now, name) => {
     const was = before.get(name);
-    if (!was) changes.push(`${name} added at ${show(now.value)}`);
-    else if (was.value !== now.value) changes.push(`${name} ${show(was.value)} → ${show(now.value)}`);
-    else if (was.inChart !== now.inChart) changes.push(`${name} ${now.inChart ? 'added to' : 'removed from'} chart`);
+    if (!was) {
+      if (before.size > 0) {
+        changes.push(`${name} added at ${show(now.value)}`);
+      }
+    } else if (was.value !== now.value) {
+      changes.push(`${name} ${show(was.value)} → ${show(now.value)}`);
+    } else if (was.inChart !== now.inChart) {
+      changes.push(`${name} ${now.inChart ? 'added to' : 'removed from'} chart`);
+    }
   });
-  before.forEach((_was, name) => {
-    if (!after.has(name)) changes.push(`${name} removed`);
-  });
+  if (before.size > 0 && after.size > 0) {
+    before.forEach((_was, name) => {
+      if (!after.has(name)) changes.push(`${name} removed`);
+    });
+  }
   return changes;
 }
 
 export function playerStatsMessage(name, ovrBefore, ovrAfter, changes) {
-  const ovr = ovrBefore === ovrAfter ? `OVR ${ovrAfter}` : `OVR ${ovrBefore} → ${ovrAfter}`;
-  return fitList(`Changed stats of ${name} (${ovr}):`, changes);
+  const ovr = ovrBefore === ovrAfter ? '' : ` (OVR ${ovrBefore} → ${ovrAfter})`;
+  return fitList(`Changed stats of ${name}${ovr}:`, changes);
+}
+
+/**
+ * Normalizes log messages so that if a stats log contains all metrics of a profile,
+ * it only displays the ones that actually changed.
+ */
+export function formatActivityMessage(message, type) {
+  if (!message) return '';
+  if (type === 'player.stats_changed' || message.startsWith('Changed stats of')) {
+    const colonIdx = message.indexOf(':');
+    if (colonIdx !== -1) {
+      const prefix = message.slice(0, colonIdx + 1);
+      const rest = message.slice(colonIdx + 1).trim();
+      const parts = rest.split(/,\s*/);
+      const changedOnly = parts.filter((p) => p.includes('→'));
+      if (changedOnly.length > 0 && changedOnly.length < parts.length) {
+        return `${prefix} ${changedOnly.join(', ')}`;
+      }
+    }
+  }
+  return message;
 }
 
 // ---------- team lineups ----------

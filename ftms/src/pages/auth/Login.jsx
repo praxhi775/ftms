@@ -10,7 +10,9 @@ import './Login.css';
 
 export default function Login() {
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => {
+    return sessionStorage.getItem('ftms_last_login_email') || '';
+  });
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -22,10 +24,31 @@ export default function Login() {
     document.title = 'Log in | FTMS';
   }, []);
 
+  const handleEmailChange = (e) => {
+    const val = e.target.value;
+    setEmail(val);
+    if (val.trim()) {
+      sessionStorage.setItem('ftms_last_login_email', val.trim());
+    } else {
+      sessionStorage.removeItem('ftms_last_login_email');
+    }
+  };
+
+  const handleForgotPasswordClick = () => {
+    if (email.trim()) {
+      sessionStorage.setItem('ftms_last_login_email', email.trim());
+    } else {
+      sessionStorage.removeItem('ftms_last_login_email');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSubmitting(true);
+    if (email.trim()) {
+      sessionStorage.setItem('ftms_last_login_email', email.trim());
+    }
     try {
       await login(email, password);
       // the route guard moves you on once your account is loaded
@@ -91,7 +114,7 @@ export default function Login() {
                   type="email"
                   className="login-input"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={handleEmailChange}
                   autoComplete="email"
                   placeholder="you@example.com"
                   required
@@ -125,7 +148,13 @@ export default function Login() {
             </div>
 
             <div className="login-row-end">
-              <AuthLink to="/forgot-password">Forgot password?</AuthLink>
+              <AuthLink
+                to={email.trim() ? `/forgot-password?email=${encodeURIComponent(email.trim())}` : '/forgot-password'}
+                state={{ email: email.trim() }}
+                onClick={handleForgotPasswordClick}
+              >
+                Forgot password?
+              </AuthLink>
             </div>
 
             <button type="submit" className="login-btn" disabled={submitting}>

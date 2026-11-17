@@ -7,6 +7,7 @@ import { friendlyAuthError } from '../../firebase/authErrors';
 import { ACTIVITY_PAGE_SIZE, fetchActivityPage, getManager } from '../../services/adminService';
 import { ACTIVITY_CATEGORIES, categoryLabel, categoryOf } from '../../utils/activityTypes';
 import { dayLabel, formatTime, formatTimestamp, toDate } from '../../utils/dates';
+import { formatActivityMessage } from '../../utils/activityMessages';
 
 const MAX_AUTO_PAGES = 4; // while a filter is active, keep loading older pages up to this many times
 
@@ -151,9 +152,15 @@ export default function ManagerActivity() {
         </button>
       </header>
 
-      <Link to="/admin" className="admin-back-link">
-        <ArrowLeft size={15} /> All managers
-      </Link>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <Link to="/admin?tab=logs" className="admin-back-link">
+          <ArrowLeft size={15} /> All activity logs
+        </Link>
+        <span style={{ color: 'var(--text-muted)' }}>|</span>
+        <Link to="/admin?tab=managers" className="admin-back-link">
+          All managers
+        </Link>
+      </div>
 
       <section className="admin-card" aria-labelledby="activity-heading">
         {manager && (
@@ -242,7 +249,9 @@ export default function ManagerActivity() {
                   <span className={`activity-badge activity-badge-${categoryOf(row.entry.type)}`}>
                     {categoryLabel(categoryOf(row.entry.type))}
                   </span>
-                  <span className="activity-message">{row.entry.message}</span>
+                  <span className="activity-message">
+                    {formatActivityMessage(row.entry.message, row.entry.type)}
+                  </span>
                 </li>
               )
             )}
