@@ -4241,6 +4241,81 @@
   background: #fff;
 }
 
+
+/* Activity Table */
+.activity-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 640px;
+}
+
+.activity-table th {
+  padding: 10px 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+  font-weight: 700;
+  background: #fff;
+  vertical-align: middle;
+}
+
+.activity-table td {
+  padding: 11px 12px;
+  border-top: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.activity-table-row:hover td {
+  background: rgba(0, 0, 0, 0.015);
+}
+
+.activity-day-row td.activity-day-cell {
+  padding: 14px 12px 6px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-subtle);
+  background: transparent;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.activity-table th.th-time,
+.activity-time-cell {
+  text-align: center;
+  width: 95px;
+  white-space: nowrap;
+}
+
+.activity-table th.th-type,
+.activity-type-cell {
+  text-align: center;
+  width: 130px;
+  white-space: nowrap;
+}
+
+.activity-table th.th-manager,
+.activity-manager-cell {
+  text-align: center;
+  width: 160px;
+  white-space: nowrap;
+}
+
+.activity-table th.th-activity,
+.activity-message-cell {
+  text-align: left;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  line-height: 1.45;
+  vertical-align: middle;
+}
+
 .activity-list {
   list-style: none;
   margin: 0;
@@ -4278,6 +4353,9 @@
 }
 
 .activity-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 2px 9px;
   border-radius: 999px;
   font-size: 11px;

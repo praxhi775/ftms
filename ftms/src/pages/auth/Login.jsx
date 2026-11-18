@@ -5,7 +5,7 @@ import { useAuth } from '../../context/useAuth';
 import { friendlyAuthError } from '../../firebase/authErrors';
 import AppLogo from '../../components/common/AppLogo';
 import { AuthError, AuthLink } from './AuthLayout';
-import LoginPitch from './LoginPitch';
+import FootballAnimation from './FootballAnimation';
 import './Login.css';
 
 export default function Login() {
@@ -79,7 +79,7 @@ export default function Login() {
 
         {/* sits in the space between the message and the footer, so it never overlaps either */}
         <div className="login-visual">
-          <LoginPitch />
+          <FootballAnimation />
         </div>
 
         <p className="login-hero-footer">FOOTBALL TEAM MANAGEMENT SYSTEM</p>

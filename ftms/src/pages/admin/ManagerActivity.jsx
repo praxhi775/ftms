@@ -237,25 +237,44 @@ export default function ManagerActivity() {
         )}
 
         {rows.length > 0 && (
-          <ul className="activity-list">
-            {rows.map((row) =>
-              row.kind === 'day' ? (
-                <li key={row.key} className="activity-day">{row.label}</li>
-              ) : (
-                <li key={row.key} className="activity-item">
-                  <time className="activity-time" dateTime={toDate(row.entry.at)?.toISOString()}>
-                    {formatTime(row.entry.at)}
-                  </time>
-                  <span className={`activity-badge activity-badge-${categoryOf(row.entry.type)}`}>
-                    {categoryLabel(categoryOf(row.entry.type))}
-                  </span>
-                  <span className="activity-message">
-                    {formatActivityMessage(row.entry.message, row.entry.type)}
-                  </span>
-                </li>
-              )
-            )}
-          </ul>
+          <div className="admin-table-wrap">
+            <table className="admin-table activity-table">
+              <thead>
+                <tr>
+                  <th className="th-time" style={{ width: '95px' }}>Time</th>
+                  <th className="th-type" style={{ width: '130px' }}>Type</th>
+                  <th className="th-activity">Activity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) =>
+                  row.kind === 'day' ? (
+                    <tr key={row.key} className="activity-day-row">
+                      <td colSpan={3} className="activity-day-cell">{row.label}</td>
+                    </tr>
+                  ) : (
+                    <tr key={row.key} className="activity-table-row">
+                      <td className="activity-time-cell">
+                        <time className="activity-time" dateTime={toDate(row.entry.at)?.toISOString()}>
+                          {formatTime(row.entry.at)}
+                        </time>
+                      </td>
+                      <td className="activity-type-cell">
+                        <span className={`activity-badge activity-badge-${categoryOf(row.entry.type)}`}>
+                          {categoryLabel(categoryOf(row.entry.type))}
+                        </span>
+                      </td>
+                      <td className="activity-message-cell">
+                        <span className="activity-message">
+                          {formatActivityMessage(row.entry.message, row.entry.type)}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
 
         {!loading && entries.length > 0 && (

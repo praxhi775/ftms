@@ -24,7 +24,7 @@ export default function AdminHome() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Tab: 'logs' (All Activity Logs) or 'managers' (Registered Managers)
-  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') === 'managers' ? 'managers' : 'logs');
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') === 'logs' ? 'logs' : 'managers');
 
   // Managers state
   const [managers, setManagers] = useState([]);
@@ -38,6 +38,7 @@ export default function AdminHome() {
 
   // Logs state
   const [logs, setLogs] = useState([]);
+  const [totalLogsCount, setTotalLogsCount] = useState(0);
   const [loadingLogs, setLoadingLogs] = useState(true);
   const [errorLogs, setErrorLogs] = useState('');
   const [selectedManagerId, setSelectedManagerId] = useState(() => searchParams.get('managerId') || 'all');
@@ -49,6 +50,21 @@ export default function AdminHome() {
   useEffect(() => {
     document.title = activeTab === 'logs' ? 'Activity Logs | Admin FTMS' : 'Managers | Admin FTMS';
   }, [activeTab]);
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'logs') {
+      setActiveTab('logs');
+    } else if (tabParam === 'managers') {
+      setActiveTab('managers');
+    }
+    const mgrParam = searchParams.get('managerId');
+    if (mgrParam) {
+      setSelectedManagerId(mgrParam);
+    } else if (tabParam === 'logs') {
+      setSelectedManagerId('all');
+    }
+  }, [searchParams]);
 
   // Subscribe to live list of managers
   useEffect(() => {
@@ -78,6 +94,9 @@ export default function AdminHome() {
         to: endOfInputDay(logToDate),
       });
       setLogs(res.entries);
+      if (selectedManagerId === 'all' && !logFromDate && !logToDate) {
+        setTotalLogsCount(res.entries.length);
+      }
     } catch (err) {
       setErrorLogs(friendlyAuthError(err));
       setLogs([]);
@@ -143,6 +162,7 @@ export default function AdminHome() {
     setLogSearch('');
     setLogFromDate('');
     setLogToDate('');
+    setSearchParams({ tab: 'logs' });
   };
 
   const confirmChange = async () => {
@@ -167,6 +187,11 @@ export default function AdminHome() {
   };
 
   const pendingBlocking = pending?.nextStatus === MANAGER_STATUS.BLOCKED;
+  const selectedManager = useMemo(
+    () => managers.find((m) => m.id === selectedManagerId),
+    [managers, selectedManagerId]
+  );
+  const selectedManagerName = selectedManager?.name || selectedManager?.email?.split('@')[0] || 'Manager';
 
   // Day headings for the activity list: "Today", "Yesterday", ...
   const logRows = [];
@@ -180,14 +205,34 @@ export default function AdminHome() {
     logRows.push({ kind: 'entry', key: e.id, entry: e });
   });
 
+  const handleViewAllLogs = () => {
+    setSelectedManagerId('all');
+    setActiveTab('logs');
+    setSearchParams({ tab: 'logs' });
+  };
+
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    setSearchParams(tab === 'managers' ? { tab: 'managers' } : {});
+    if (tab === 'logs') {
+      handleViewAllLogs();
+    } else {
+      setSearchParams({});
+    }
   };
 
   const handleViewManagerLogs = (mgrId) => {
     setSelectedManagerId(mgrId);
-    handleTabChange('logs');
+    setActiveTab('logs');
+    setSearchParams({ tab: 'logs', managerId: mgrId });
+  };
+
+  const handleManagerFilterChange = (mgrId) => {
+    setSelectedManagerId(mgrId);
+    if (mgrId === 'all') {
+      setSearchParams({ tab: 'logs' });
+    } else {
+      setSearchParams({ tab: 'logs', managerId: mgrId });
+    }
   };
 
   return (
@@ -215,168 +260,30 @@ export default function AdminHome() {
       <nav className="admin-tabs" aria-label="Admin Navigation">
         <button
           type="button"
-          className={`admin-tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
-          onClick={() => handleTabChange('logs')}
-        >
-          <History size={16} /> All Activity Logs ({logs.length})
-        </button>
-        <button
-          type="button"
           className={`admin-tab-btn ${activeTab === 'managers' ? 'active' : ''}`}
           onClick={() => handleTabChange('managers')}
         >
           <Users size={16} /> Registered Managers ({counts.total})
         </button>
+        <button
+          type="button"
+          className={`admin-tab-btn ${activeTab === 'logs' && selectedManagerId === 'all' ? 'active' : ''}`}
+          onClick={handleViewAllLogs}
+        >
+          <History size={16} /> All Activity Logs {selectedManagerId === 'all' ? `(${logs.length})` : (totalLogsCount ? `(${totalLogsCount})` : '')}
+        </button>
+        {activeTab === 'logs' && selectedManagerId !== 'all' && (
+          <button
+            type="button"
+            className="admin-tab-btn active"
+            onClick={handleViewAllLogs}
+            title="Click to view all activity logs"
+          >
+            <History size={16} /> {selectedManagerName}&apos;s Logs ({logs.length})
+            <span style={{ marginLeft: 6, fontSize: '11px', opacity: 0.8 }}>✕</span>
+          </button>
+        )}
       </nav>
-
-      {/* TAB 1: ALL ACTIVITY LOGS IN ONE PLACE */}
-      {activeTab === 'logs' && (
-        <section className="admin-card" aria-labelledby="all-activity-heading">
-          <div className="admin-card-head admin-card-head-split">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <History size={18} />
-              <h2 id="all-activity-heading">Activity Logs</h2>
-            </div>
-            <button
-              type="button"
-              className="activity-refresh"
-              onClick={loadLogs}
-              disabled={loadingLogs}
-              title="Refresh logs"
-            >
-              <RefreshCw size={14} className={loadingLogs ? 'spin' : ''} /> Refresh
-            </button>
-          </div>
-
-          {/* Filter Bar */}
-          <div className="activity-filters">
-            {/* Search filter */}
-            <div className="admin-search">
-              <Search size={15} aria-hidden="true" />
-              <input
-                type="search"
-                value={logSearch}
-                onChange={(e) => setLogSearch(e.target.value)}
-                placeholder="Search logs, players, stats…"
-                aria-label="Search activity"
-              />
-            </div>
-
-            {/* Manager filter */}
-            <select
-              value={selectedManagerId}
-              onChange={(e) => setSelectedManagerId(e.target.value)}
-              aria-label="Filter by manager"
-              className="admin-filter"
-            >
-              <option value="all">All managers ({managers.length})</option>
-              {managers.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name || m.email}
-                </option>
-              ))}
-            </select>
-
-            {/* Type/Category filter */}
-            <select
-              value={logCategory}
-              onChange={(e) => setLogCategory(e.target.value)}
-              aria-label="Filter by activity type"
-              className="admin-filter"
-            >
-              <option value="all">All activity types</option>
-              {ACTIVITY_CATEGORIES.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-
-            {/* Date range filters */}
-            <label className="activity-date">
-              <span>From</span>
-              <input
-                type="date"
-                value={logFromDate}
-                max={logToDate || undefined}
-                onChange={(e) => setLogFromDate(e.target.value)}
-                aria-label="From date"
-              />
-            </label>
-            <label className="activity-date">
-              <span>To</span>
-              <input
-                type="date"
-                value={logToDate}
-                min={logFromDate || undefined}
-                onChange={(e) => setLogToDate(e.target.value)}
-                aria-label="To date"
-              />
-            </label>
-
-            {anyLogFilterActive && (
-              <button type="button" className="activity-clear" onClick={clearLogFilters}>
-                Clear filters
-              </button>
-            )}
-          </div>
-
-          {/* Counts & Status */}
-          <div style={{ marginBottom: 12, fontSize: 13, color: 'var(--text-secondary)' }}>
-            {anyLogFilterActive ? (
-              <span>Showing <strong>{visibleLogs.length}</strong> of <strong>{logs.length}</strong> loaded logs</span>
-            ) : (
-              <span>Total <strong>{logs.length}</strong> activity logs loaded</span>
-            )}
-            {selectedManagerId !== 'all' && (
-              <span style={{ marginLeft: 8 }}>
-                (Filtered for: <strong>{managers.find((m) => m.id === selectedManagerId)?.name || 'Manager'}</strong>)
-              </span>
-            )}
-          </div>
-
-          {errorLogs && <div className="auth-error" role="alert">{errorLogs}</div>}
-          {loadingLogs && <p className="admin-muted">Loading activity logs…</p>}
-
-          {!loadingLogs && !errorLogs && logs.length === 0 && (
-            <p className="admin-muted">No activity has been recorded yet.</p>
-          )}
-
-          {!loadingLogs && logs.length > 0 && visibleLogs.length === 0 && (
-            <p className="admin-muted">No activity logs match your filter criteria.</p>
-          )}
-
-          {/* Logs List */}
-          {logRows.length > 0 && (
-            <ul className="activity-list">
-              {logRows.map((row) =>
-                row.kind === 'day' ? (
-                  <li key={row.key} className="activity-day">{row.label}</li>
-                ) : (
-                  <li key={row.key} className="activity-item">
-                    <time className="activity-time" dateTime={toDate(row.entry.at)?.toISOString()}>
-                      {formatTime(row.entry.at)}
-                    </time>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                      <span className={`activity-badge activity-badge-${categoryOf(row.entry.type)}`}>
-                        {categoryLabel(categoryOf(row.entry.type))}
-                      </span>
-                      {row.entry.managerName && (
-                        <span className="activity-manager-badge" title={row.entry.managerEmail || ''}>
-                          {row.entry.managerName}
-                        </span>
-                      )}
-                    </div>
-                    <span className="activity-message">
-                      {formatActivityMessage(row.entry.message, row.entry.type)}
-                    </span>
-                  </li>
-                )
-              )}
-            </ul>
-          )}
-        </section>
-      )}
 
       {/* TAB 2: REGISTERED MANAGERS */}
       {activeTab === 'managers' && (
@@ -488,6 +395,167 @@ export default function AdminHome() {
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* TAB 1: ALL ACTIVITY LOGS IN ONE PLACE */}
+      {activeTab === 'logs' && (
+        <section className="admin-card" aria-labelledby="all-activity-heading">
+          <div className="admin-card-head admin-card-head-split">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <History size={18} />
+              <h2 id="all-activity-heading">Activity Logs</h2>
+            </div>
+            <button
+              type="button"
+              className="activity-refresh"
+              onClick={loadLogs}
+              disabled={loadingLogs}
+              title="Refresh logs"
+            >
+              <RefreshCw size={14} className={loadingLogs ? 'spin' : ''} /> Refresh
+            </button>
+          </div>
+
+          {/* Filter Bar */}
+          <div className="activity-filters">
+            {/* Search filter */}
+            <div className="admin-search">
+              <Search size={15} aria-hidden="true" />
+              <input
+                type="search"
+                value={logSearch}
+                onChange={(e) => setLogSearch(e.target.value)}
+                placeholder="Search logs, players, stats…"
+                aria-label="Search activity"
+              />
+            </div>
+
+            {/* Manager filter */}
+            <select
+              value={selectedManagerId}
+              onChange={(e) => handleManagerFilterChange(e.target.value)}
+              aria-label="Filter by manager"
+              className="admin-filter"
+            >
+              <option value="all">All managers ({managers.length})</option>
+              {managers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name || m.email}
+                </option>
+              ))}
+            </select>
+
+            {/* Type/Category filter */}
+            <select
+              value={logCategory}
+              onChange={(e) => setLogCategory(e.target.value)}
+              aria-label="Filter by activity type"
+              className="admin-filter"
+            >
+              <option value="all">All activity types</option>
+              {ACTIVITY_CATEGORIES.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Date range filters */}
+            <label className="activity-date">
+              <span>From</span>
+              <input
+                type="date"
+                value={logFromDate}
+                max={logToDate || undefined}
+                onChange={(e) => setLogFromDate(e.target.value)}
+                aria-label="From date"
+              />
+            </label>
+            <label className="activity-date">
+              <span>To</span>
+              <input
+                type="date"
+                value={logToDate}
+                min={logFromDate || undefined}
+                onChange={(e) => setLogToDate(e.target.value)}
+                aria-label="To date"
+              />
+            </label>
+
+            {anyLogFilterActive && (
+              <button type="button" className="activity-clear" onClick={clearLogFilters}>
+                Clear filters
+              </button>
+            )}
+          </div>
+
+          
+
+          {errorLogs && <div className="auth-error" role="alert">{errorLogs}</div>}
+          {loadingLogs && <p className="admin-muted">Loading activity logs…</p>}
+
+          {!loadingLogs && !errorLogs && logs.length === 0 && (
+            <p className="admin-muted">No activity has been recorded yet.</p>
+          )}
+
+          {!loadingLogs && logs.length > 0 && visibleLogs.length === 0 && (
+            <p className="admin-muted">No activity logs match your filter criteria.</p>
+          )}
+
+          {/* Logs Table */}
+          {logRows.length > 0 && (
+            <div className="admin-table-wrap">
+              <table className="admin-table activity-table">
+                <thead>
+                  <tr>
+                    <th className="th-time" style={{ width: '95px' }}>Time</th>
+                    <th className="th-type" style={{ width: '130px' }}>Type</th>
+                    <th className="th-manager" style={{ width: '160px' }}>Manager</th>
+                    <th className="th-activity">Activity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logRows.map((row) =>
+                    row.kind === 'day' ? (
+                      <tr key={row.key} className="activity-day-row">
+                        <td colSpan={4} className="activity-day-cell">
+                          {row.label}
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={row.key} className="activity-table-row">
+                        <td className="activity-time-cell">
+                          <time className="activity-time" dateTime={toDate(row.entry.at)?.toISOString()}>
+                            {formatTime(row.entry.at)}
+                          </time>
+                        </td>
+                        <td className="activity-type-cell">
+                          <span className={`activity-badge activity-badge-${categoryOf(row.entry.type)}`}>
+                            {categoryLabel(categoryOf(row.entry.type))}
+                          </span>
+                        </td>
+                        <td className="activity-manager-cell">
+                          {row.entry.managerName ? (
+                            <span className="activity-manager-badge" title={row.entry.managerEmail || ''}>
+                              {row.entry.managerName}
+                            </span>
+                          ) : (
+                            <span className="admin-muted">—</span>
+                          )}
+                        </td>
+                        <td className="activity-message-cell">
+                          <span className="activity-message">
+                            {formatActivityMessage(row.entry.message, row.entry.type)}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  )}
                 </tbody>
               </table>
             </div>

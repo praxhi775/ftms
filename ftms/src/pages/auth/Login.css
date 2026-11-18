@@ -81,29 +81,108 @@
   text-wrap: balance;
 }
 
-/* The illustration lives in the free space between the message and the footer */
+/* The football animation lives in the free space between the message and the footer */
 .login-visual {
   position: relative;
   flex: 1 1 0;
-  min-height: 0;
-  margin-top: 28px;
-  container-type: size;
+  min-height: 80px;
+  margin-top: 24px;
+  margin-left: calc(-1 * clamp(28px, min(4.5vw, 6vh), 64px));
+  margin-right: calc(-1 * clamp(28px, min(4.5vw, 6vh), 64px));
+  display: flex;
+  align-items: center;
 }
 
-.login-pitch {
+/* ---------- Continuous Football Sideways Animation ---------- */
+.football-scene {
+  position: relative;
+  width: 100%;
+  height: 88px;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  container-type: inline-size;
+}
+
+.football-pitch-line {
   position: absolute;
-  top: 0;
-  right: clamp(0px, 3%, 32px);
-  height: 100%;
-  width: auto;
-  max-width: 100%;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  height: 1.5px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(245, 243, 237, 0.08) 8%,
+    rgba(245, 243, 237, 0.22) 50%,
+    rgba(245, 243, 237, 0.08) 92%,
+    transparent 100%
+  );
+}
+
+
+.football-carrier {
+  position: absolute;
+  bottom: 18px;
+  left: 0;
+  width: 52px;
+  height: 52px;
+  will-change: transform;
+  animation: football-roll-sideways 8s linear infinite;
+}
+
+.football-shadow {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 44px;
+  height: 8px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 0.42) 0%,
+    rgba(0, 0, 0, 0.16) 50%,
+    transparent 75%
+  );
+  border-radius: 50%;
   pointer-events: none;
 }
 
-/* not enough room left for it: hide it instead of squeezing it */
-@container (max-height: 230px) {
-  .login-pitch {
-    display: none;
+.football-ball {
+  width: 52px;
+  height: 52px;
+  display: block;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.28));
+  will-change: transform;
+  animation: football-spin-clockwise 8s linear infinite;
+}
+
+@keyframes football-roll-sideways {
+  0% {
+    transform: translateX(-70px);
+  }
+  100% {
+    transform: translateX(calc(100cqw + 70px));
+  }
+}
+
+@supports not (width: 1cqw) {
+  @keyframes football-roll-sideways {
+    0% {
+      left: -70px;
+    }
+    100% {
+      left: calc(100% + 20px);
+    }
+  }
+}
+
+@keyframes football-spin-clockwise {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(1800deg);
   }
 }
 
@@ -363,5 +442,15 @@
   .login-eye,
   .login-btn {
     transition: none;
+  }
+
+  .football-carrier,
+  .football-ball {
+    animation: none;
+  }
+
+  .football-carrier {
+    left: 48px;
+    transform: none;
   }
 }

@@ -37,11 +37,27 @@ const PROFILE_FIELDS = [
   ['reputation', 'Reputation'],
 ];
 
+const PROFILE_DEFAULTS = {
+  position: 'MID',
+  preferredFoot: 'Right',
+  weakFoot: 'Med',
+  skillMoves: 'Med',
+  reputation: 'Med',
+  status: 'active',
+};
+
 export function profileChanges(before = {}, after = {}) {
   const changes = [];
   PROFILE_FIELDS.forEach(([key, label]) => {
-    const a = before[key] ?? null;
-    const b = after[key] ?? null;
+    const defaultVal = PROFILE_DEFAULTS[key] ?? null;
+    const a = before[key] ?? defaultVal;
+    const b = after[key] ?? defaultVal;
+
+    // If before had no value set and after is just the default value, it is not a user update
+    if ((before[key] == null || before[key] === '') && b === defaultVal) {
+      return;
+    }
+
     if (String(a ?? '') !== String(b ?? '')) {
       if (a === null || a === '') changes.push(`${label} set to ${show(b)}`);
       else if (b === null || b === '') changes.push(`${label} cleared`);
@@ -100,15 +116,42 @@ export function playerStatsMessage(name, ovrBefore, ovrAfter, changes) {
  */
 export function formatActivityMessage(message, type) {
   if (!message) return '';
-  if (type === 'player.stats_changed' || message.startsWith('Changed stats of')) {
+  if (
+    type === 'player.stats_changed' ||
+    type === 'player.updated' ||
+    message.startsWith('Changed stats of') ||
+    message.startsWith('Updated profile of')
+  ) {
     const colonIdx = message.indexOf(':');
     if (colonIdx !== -1) {
       const prefix = message.slice(0, colonIdx + 1);
       const rest = message.slice(colonIdx + 1).trim();
       const parts = rest.split(/,\s*/);
-      const changedOnly = parts.filter((p) => p.includes('→'));
+
+      const isPhantomDefault = (p) =>
+        p.endsWith('set to Med') ||
+        p.endsWith('set to Right') ||
+        p.endsWith('set to active') ||
+        p.endsWith('set to MID');
+
+      // Keep only parts that represent an actual update (X → Y, cleared, Notes edited, or non-default set)
+      const changedOnly = parts.filter(
+        (p) =>
+          p.includes('→') ||
+          p.includes('cleared') ||
+          p === 'Notes edited' ||
+          !isPhantomDefault(p)
+      );
+
       if (changedOnly.length > 0 && changedOnly.length < parts.length) {
         return `${prefix} ${changedOnly.join(', ')}`;
+      }
+
+      const transitionOnly = parts.filter(
+        (p) => p.includes('→') || p.includes('cleared') || p === 'Notes edited'
+      );
+      if (transitionOnly.length > 0 && transitionOnly.length < parts.length) {
+        return `${prefix} ${transitionOnly.join(', ')}`;
       }
     }
   }
